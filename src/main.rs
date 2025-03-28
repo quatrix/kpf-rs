@@ -29,7 +29,7 @@ struct Args {
     #[arg(long, short, group = "input")]
     config: Option<PathBuf>,
 
-    /// Verbosity level (1-4)
+    /// Verbosity level (0-3)
     #[arg(long, short, default_value = "1")]
     verbose: u8,
     /// Timeout in seconds for the port-forward connection

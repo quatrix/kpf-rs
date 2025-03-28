@@ -74,12 +74,11 @@ Then run the tool with:
 - `--resource <RESOURCE>`: Specify a single Kubernetes resource to port-forward (format: type/name:port).
 - `--local_port <PORT>`: Local port to listen on when using a single resource.
 - `--config <CONFIG>`: Path to a JSON configuration file containing multiple port-forwards.
-- `--verbose <VERBOSE>`: Verbosity level (0-4). Higher values produce more detailed logs.
+- `--verbose <VERBOSE>`: Verbosity level (0-3). Higher values produce more detailed logs.
   - **Level 0**: No logging output.
   - **Level 1**: Basic logging and status updates.
   - **Level 2**: Additional logging, including request bodies (except for GET requests).
   - **Level 3**: Detailed logging with response body inspection and JSON syntax highlighting.
-  - **Level 4**: Currently behaves the same as level 3 (maximum logging available).
 - `--timeout <TIMEOUT>`: Timeout in seconds for the port-forward connection.
 - `--liveness_probe <PATH>`: HTTP endpoint path used for health checks (e.g., `/ping`).
 - `--show_liveness`: Flag to enable logging for liveness probe requests (disabled by default).
