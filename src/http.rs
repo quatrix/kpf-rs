@@ -18,6 +18,11 @@ async fn proxy_request(
     let method = req.method().clone();
     let path = req.uri().path().to_string();
     
+    // Check for internal status endpoint
+    if path == "/_internal/status" {
+        return handle_internal_status(port_forward_status, verbose).await;
+    }
+    
     // Always log the incoming request if verbose level > 0
     if verbose >= 1 {
         println!("{} Received request: {} {}", "📥".bright_blue(), method.as_str(), path);
@@ -177,6 +182,41 @@ async fn proxy_request(
             Ok(response)
         }
     }
+}
+
+async fn handle_internal_status(
+    port_forward_status: Arc<Mutex<bool>>,
+    verbose: u8,
+) -> Result<Response<Body>, hyper::Error> {
+    // Get current status
+    let is_active = {
+        let status = port_forward_status.lock().unwrap();
+        *status
+    };
+    
+    // Create status response
+    let status_info = serde_json::json!({
+        "status": {
+            "port_forward_active": is_active,
+            "timestamp": chrono::Utc::now().to_rfc3339(),
+            "verbose_level": verbose,
+        },
+        "version": env!("CARGO_PKG_VERSION"),
+    });
+    
+    let status_json = serde_json::to_string_pretty(&status_info).unwrap();
+    
+    // Log the status request
+    println!("{} Internal status request: {}", "🔍".bright_magenta(), if is_active { "ACTIVE".bright_green() } else { "INACTIVE".bright_red() });
+    
+    // Return JSON response
+    let mut response = Response::new(Body::from(status_json));
+    response.headers_mut().insert(
+        hyper::header::CONTENT_TYPE,
+        hyper::header::HeaderValue::from_static("application/json"),
+    );
+    
+    Ok(response)
 }
 
 pub async fn start_http_server(
