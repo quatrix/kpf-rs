@@ -7,6 +7,7 @@ use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
+use colored_json::ToColoredJson;
 
 async fn proxy_request(
     req: Request<Body>,
@@ -141,10 +142,18 @@ async fn proxy_request(
                 let bytes = hyper::body::to_bytes(body).await.unwrap_or_default();
                 let body_clone = bytes.clone();
                 
-                // Try to parse as JSON for pretty printing
+                // Try to parse as JSON for pretty printing with colors if applicable
+                let content_type_json = parts.headers.get("content-type")
+                    .and_then(|ct| ct.to_str().ok())
+                    .map(|ct| ct.contains("application/json"))
+                    .unwrap_or(false);
                 let resp_body = if let Ok(json_str) = String::from_utf8(bytes.to_vec()) {
                     if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(&json_str) {
-                        serde_json::to_string_pretty(&json_value).unwrap_or(json_str)
+                        if content_type_json {
+                            json_value.to_colored_json_auto().unwrap_or_else(|_| serde_json::to_string_pretty(&json_value).unwrap_or(json_str))
+                        } else {
+                            serde_json::to_string_pretty(&json_value).unwrap_or(json_str)
+                        }
                     } else {
                         format!("Binary data: {} bytes", body_clone.len())
                     }
