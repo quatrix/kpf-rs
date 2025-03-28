@@ -95,14 +95,17 @@ async fn proxy_request(
         Ok(response) => {
             let status = response.status();
             
-            // Always log the response status regardless of verbosity level
-            cli::print_request(
-                method.as_str(),
-                &path,
-                Some(status.as_u16()),
-                Some(start.elapsed()),
-                verbose,
-            );
+            // Always log the response status if verbosity level is at least 1
+            // This is outside the verbosity check to ensure all requests are logged
+            if verbose >= 1 {
+                cli::print_request(
+                    method.as_str(),
+                    &path,
+                    Some(status.as_u16()),
+                    Some(start.elapsed()),
+                    verbose,
+                );
+            }
             
             // Print request body if verbosity level is 2 or higher
             if verbose >= 2 && req_body_for_logging.is_some() {
@@ -165,6 +168,7 @@ pub async fn start_http_server(
     let addr = SocketAddr::from(([127, 0, 0, 1], local_port));
     
     println!("{} HTTP proxy server listening on {}", "🌐".bright_green(), format!("http://localhost:{}", local_port).bright_blue());
+    println!("{} Verbosity level set to {}", "🔍".bright_yellow(), verbose);
     
     let port_forward_status_clone = port_forward_status.clone();
     

@@ -14,9 +14,8 @@ pub fn print_request(
     duration: Option<Duration>,
     verbose: u8,
 ) {
-    // Only print if verbose level is at least 1
-    if verbose >= 1 {
-        let method_colored = match method {
+    // This function is only called when verbose >= 1, so we don't need to check again
+    let method_colored = match method {
             "GET" => method.bright_green(),
             "POST" => method.bright_yellow(),
             "PUT" => method.bright_blue(),
@@ -56,7 +55,6 @@ pub fn print_request(
             status_str,
             duration_str
         );
-    }
 }
 
 pub fn print_forwarding_status(resource: &str, local_port: u16, remote_port: u16, alive: bool) {
