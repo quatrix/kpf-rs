@@ -104,6 +104,13 @@ async fn proxy_request(
             let status = response.status();
             let elapsed = start.elapsed();
             if verbose >= 1 {
+                let colored_method = match method {
+                    hyper::Method::GET => "GET".bright_blue(),
+                    hyper::Method::POST => "POST".bright_magenta(),
+                    hyper::Method::PUT => "PUT".bright_yellow(),
+                    hyper::Method::DELETE => "DELETE".bright_red(),
+                    _ => method.as_str().normal(),
+                };
                 let status_colored = match status.as_u16() {
                     200..=299 => status.as_str().bright_green(),
                     300..=399 => status.as_str().bright_cyan(),
@@ -119,7 +126,7 @@ async fn proxy_request(
                 println!("{} {} - {} {} → {} ({})",
                     "✓".bright_green(),
                     resource,
-                    method.as_str(),
+                    colored_method,
                     path,
                     status_colored,
                     duration_colored
@@ -198,10 +205,17 @@ async fn proxy_request(
                 }
             }
             if verbose >= 1 {
+                let colored_method = match method {
+                    hyper::Method::GET => "GET".bright_blue(),
+                    hyper::Method::POST => "POST".bright_magenta(),
+                    hyper::Method::PUT => "PUT".bright_yellow(),
+                    hyper::Method::DELETE => "DELETE".bright_red(),
+                    _ => method.as_str().normal(),
+                };
                 println!("{} {} - {} {} → {} ({})", 
                     "✗".bright_red(),
                     resource,
-                    method.as_str(),
+                    colored_method,
                     path,
                     "502 Bad Gateway".bright_red(),
                     format!("{}ms", start.elapsed().as_millis()).bright_yellow()
