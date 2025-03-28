@@ -130,8 +130,8 @@ async fn proxy_request(
                 );
             }
             
-            // Print request body if verbosity level is 2 or higher
-            if verbose >= 2 && req_body_for_logging.is_some() {
+            // Print request body if verbosity level is 2 or higher and method is not GET
+            if verbose >= 2 && req_body_for_logging.is_some() && method != hyper::Method::GET {
                 println!("{} Request body:\n{}", "📄".bright_blue(), req_body_for_logging.unwrap());
             }
             
