@@ -1,6 +1,5 @@
 use colored::*;
-use console::Term;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 pub fn print_startup_banner() {
     println!("{}", "╔════════════════════════════════════════════╗".bright_blue());
@@ -13,7 +12,7 @@ pub fn print_request(
     path: &str,
     status: Option<u16>,
     duration: Option<Duration>,
-    verbose: u8,
+    _verbose: u8,
 ) {
     let method_colored = match method {
         "GET" => method.bright_green(),

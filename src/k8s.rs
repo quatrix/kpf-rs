@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use kube::{
-    api::{Api, ResourceExt},
+    api::Api,
     Client,
 };
 use k8s_openapi::api::core::v1::{Pod, Service};

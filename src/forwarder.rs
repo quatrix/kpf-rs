@@ -55,7 +55,7 @@ pub async fn start_single(
                     );
                     
                     // Wait for port-forward to complete or fail
-                    let result = pf.join().await;
+                    let result = pf.await;
                     
                     {
                         let mut status = port_forward_status.lock().unwrap();
