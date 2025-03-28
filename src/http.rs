@@ -14,6 +14,7 @@ async fn proxy_request(
     port_forward_status: Arc<Mutex<bool>>,
     verbose: u8,
     show_liveness: bool,
+    resource: String,
 ) -> Result<Response<Body>, hyper::Error> {
     let start = Instant::now();
     let method = req.method().clone();
@@ -26,15 +27,8 @@ async fn proxy_request(
         return handle_health_check(port_forward_status).await;
     }
     
-    // Always log the incoming request if verbose level > 0
     if verbose >= 1 {
-        if path == "/ping" {
-            if show_liveness && req.headers().get("x-internal-probe").is_none() {
-                println!("{} Health probe: {} {}", "💓".bright_magenta(), method.as_str(), path);
-            }
-        } else {
-            println!("{} Received request: {} {}", "📥".bright_blue(), method.as_str(), path);
-        }
+        println!("{} - {} {}", resource, method.as_str(), path);
     }
     
     // Check if port-forward is active
@@ -67,16 +61,7 @@ async fn proxy_request(
         req.uri().path_and_query().map(|x| x.as_str()).unwrap_or("")
     );
     
-    // Log that we're forwarding the request
-    if verbose >= 1 {
-        if path == "/ping" {
-            if show_liveness && req.headers().get("x-internal-probe").is_none() {
-                println!("{} Liveness probe forwarding", "🔄".bright_magenta());
-            }
-        } else {
-            println!("{} Forwarding to: {}", "📤".bright_yellow(), &target_uri);
-        }
-    }
+    
     
     let mut target_req = Request::builder()
         .method(req.method().clone())
@@ -281,6 +266,7 @@ pub async fn start_http_server(
     port_forward_status: Arc<Mutex<bool>>,
     verbose: u8,
     show_liveness: bool,
+    resource: String,
 ) -> Result<(), hyper::Error> {
     let addr = SocketAddr::from(([127, 0, 0, 1], local_port));
     
@@ -294,10 +280,11 @@ pub async fn start_http_server(
         let verbose_level = verbose;
         let target = target_port;
         let show_liveness = show_liveness;
+        let resource = resource.clone();
         
         async move {
             Ok::<_, Infallible>(service_fn(move |req| {
-                proxy_request(req, target, port_forward_status.clone(), verbose_level, show_liveness)
+                proxy_request(req, target, port_forward_status.clone(), verbose_level, show_liveness, resource.clone())
             }))
         }
     });

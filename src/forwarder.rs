@@ -46,8 +46,9 @@ pub async fn start_single(
     println!("{} Using internal port {} for port-forward", "🔌".bright_cyan(), internal_port);
 
     // Start HTTP server on the user-specified port
+    let resource_prefix = format!("{}/{}:{}", resource_type, resource_name, resource_port);
     let http_handle = tokio::spawn(async move {
-        start_http_server(local_port, internal_port, port_forward_status_clone, verbose, show_liveness).await
+        start_http_server(local_port, internal_port, port_forward_status_clone, verbose, show_liveness, resource_prefix).await
     });
 
     // Start port-forward manager
