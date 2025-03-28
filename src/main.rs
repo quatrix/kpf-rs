@@ -60,7 +60,8 @@ async fn main() -> anyhow::Result<()> {
     if let Some(config_path) = args.config {
         // Load config file and start multiple port-forwards
         // Load config file and start multiple port-forwards
-        let config = config::load_config(config_path)?;
+        let mut config = config::load_config(config_path)?;
+        config.verbose = Some(args.verbose);
         forwarder::start_from_config(config, args.show_liveness).await?;
     } else if let Some(resource_str) = args.resource {
         // Parse resource string and start single port-forward
