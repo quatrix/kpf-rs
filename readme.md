@@ -74,7 +74,8 @@ Then run the tool with:
 - `--resource <RESOURCE>`: Specify a single Kubernetes resource to port-forward (format: type/name:port).
 - `--local_port <PORT>`: Local port to listen on when using a single resource.
 - `--config <CONFIG>`: Path to a JSON configuration file containing multiple port-forwards.
-- `--verbose <VERBOSE>`: Verbosity level (1-4). Higher values produce more detailed logs.
+- `--verbose <VERBOSE>`: Verbosity level (0-4). Higher values produce more detailed logs.
+  - **Level 0**: No logging output.
   - **Level 1**: Basic logging and status updates.
   - **Level 2**: Additional logging, including request bodies (except for GET requests).
   - **Level 3**: Detailed logging with response body inspection and JSON syntax highlighting.
