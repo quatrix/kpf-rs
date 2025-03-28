@@ -27,9 +27,6 @@ async fn proxy_request(
         return handle_health_check(port_forward_status).await;
     }
     
-    if verbose >= 1 {
-        println!("{} - {} {}", resource, method.as_str(), path);
-    }
     
     // Check if port-forward is active
     let is_active = {
@@ -123,8 +120,9 @@ async fn proxy_request(
                     _ => format!("{}ms", ms).bright_red(),
                 };
                 
-                println!("{} {} {} → {} ({})", 
+                println!("{} {} - {} {} → {} ({})", 
                     "✓".bright_green(),
+                    resource,
                     method.as_str(),
                     path,
                     status_colored,
@@ -170,8 +168,9 @@ async fn proxy_request(
             *response.status_mut() = StatusCode::BAD_GATEWAY;
             
             if verbose >= 1 {
-                println!("{} {} {} → {} ({})", 
+                println!("{} {} - {} {} → {} ({})", 
                     "✗".bright_red(),
+                    resource,
                     method.as_str(),
                     path,
                     "502 Bad Gateway".bright_red(),
