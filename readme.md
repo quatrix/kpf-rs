@@ -90,7 +90,6 @@ Then run the tool with:
 - **Verbose 1**: Show essential information about port-forwarding, including start-ups, connection attempts, and failure messages.
 - **Verbose 2**: In addition to level 1, log request bodies (except for GET requests) to help diagnose issues.
 - **Verbose 3**: Provide detailed logging with response body content, including syntax-highlighted JSON.
-- **Verbose 4**: Display maximum level debug logs, including all available diagnostic information.
 
 ## Internal Endpoints
 
