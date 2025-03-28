@@ -149,7 +149,7 @@ async fn proxy_request(
                 let resp_body = if let Ok(json_str) = String::from_utf8(bytes.to_vec()) {
                     if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(&json_str) {
                         if content_type_json {
-                            colored_json::to_colored_json(&json_str).unwrap_or_else(|_| serde_json::to_string_pretty(&json_value).unwrap_or(json_str))
+                            colored_json::to_colored_json(&json_value).unwrap_or_else(|_| serde_json::to_string_pretty(&json_value).unwrap_or(json_str))
                         } else {
                             serde_json::to_string_pretty(&json_value).unwrap_or(json_str)
                         }
