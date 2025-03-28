@@ -94,6 +94,8 @@ async fn main() -> anyhow::Result<()> {
             args.timeout,
             args.liveness_probe,
             args.show_liveness,
+            args.requests_log_file,
+            args.requests_log_verbosity,
         ).await?;
     }
     
