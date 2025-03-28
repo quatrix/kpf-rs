@@ -32,9 +32,12 @@ pub async fn start_single(
     resource_port: u16,
     local_port: u16,
     verbose: u8,
+    timeout: Option<u64>,
+    liveness_probe: Option<String>,
 ) -> Result<()> {
     let (tx, mut rx) = mpsc::channel::<bool>(10);
     let port_forward_status = Arc::new(Mutex::new(false));
+    let child_handle = std::sync::Arc::new(std::sync::Mutex::new(None));
     let port_forward_status_clone = port_forward_status.clone();
 
     // Find an available port for the internal port-forward
@@ -57,7 +60,7 @@ pub async fn start_single(
                 sleep(Duration::from_millis(RETRY_DELAY_MS)).await;
             }
             
-            match create_port_forward(&resource_type, &resource_name, resource_port, internal_port).await {
+            match create_port_forward(&resource_type, &resource_name, resource_port, internal_port, child_handle.clone()).await {
                 Ok(pf) => {
                     {
                         let mut status = port_forward_status.lock().unwrap();
@@ -86,8 +89,39 @@ pub async fn start_single(
                     
                     println!("{} Port-forward ready to accept connections", "✅".bright_green());
                     
-                    // Wait for port-forward to complete or fail
-                    let result = pf.await;
+                    let pf_future = pf;
+                    let result = if let Some(probe_path) = liveness_probe.clone() {
+                        use hyper::{Client, Request, Body, StatusCode};
+                        let liveness_future = async {
+                            loop {
+                                sleep(Duration::from_secs(5)).await;
+                                let client = Client::new();
+                                let url = format!("http://127.0.0.1:{}{}", local_port, probe_path);
+                                let req = Request::get(url).body(Body::empty()).unwrap();
+                                let timeout_duration = std::time::Duration::from_secs(timeout.unwrap_or(3));
+                                let res = tokio::time::timeout(timeout_duration, client.request(req)).await;
+                                match res {
+                                    Ok(Ok(response)) => {
+                                        if response.status() != StatusCode::OK {
+                                            break Err(anyhow::anyhow!("Liveness probe returned non-OK status: {}", response.status()));
+                                        }
+                                    }
+                                    _ => break Err(anyhow::anyhow!("Liveness probe request failed or timed out")),
+                                }
+                            }
+                        };
+                        tokio::select! {
+                            res = pf_future => res,
+                            liveness_err = liveness_future => {
+                                if let Some(mut child) = child_handle.lock().unwrap().take() {
+                                    let _ = child.kill().await;
+                                }
+                                liveness_err
+                            }
+                        }
+                    } else {
+                        pf_future.await
+                    };
                     
                     {
                         let mut status = port_forward_status.lock().unwrap();

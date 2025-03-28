@@ -33,6 +33,12 @@ struct Args {
     /// Verbosity level (1-4)
     #[arg(long, short, default_value = "1")]
     verbose: u8,
+    /// Timeout in seconds for the port-forward connection
+    #[arg(long)]
+    timeout: Option<u64>,
+    /// Liveness probe HTTP endpoint path (e.g., /ping)
+    #[arg(long)]
+    liveness_probe: Option<String>,
 }
 
 #[tokio::main]
@@ -76,6 +82,8 @@ async fn main() -> anyhow::Result<()> {
             resource_port,
             local_port,
             args.verbose,
+            args.timeout,
+            args.liveness_probe,
         ).await?;
     }
     

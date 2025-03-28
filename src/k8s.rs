@@ -52,6 +52,7 @@ pub async fn create_port_forward(
     resource_name: &str,
     resource_port: u16,
     local_port: u16,
+    child_handle: std::sync::Arc<std::sync::Mutex<Option<tokio::process::Child>>>,
 ) -> Result<impl futures::Future<Output = Result<()>>> {
     // Validate that the resource exists
     validate_resource(resource_type, resource_name).await?;
@@ -64,22 +65,31 @@ pub async fn create_port_forward(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     
-    let mut child = cmd.spawn().context("Failed to start kubectl port-forward")?;
+    let child = cmd.spawn().context("Failed to start kubectl port-forward")?;
+    {
+        let mut handle = child_handle.lock().unwrap();
+        *handle = Some(child);
+    }
     
-    // Return a future that completes when the port-forward ends
     Ok(async move {
-        let status = child.wait().await.context("Failed to wait for kubectl process")?;
-        
-        if !status.success() {
-            let mut stderr = String::new();
-            if let Some(mut err) = child.stderr.take() {
-                use tokio::io::AsyncReadExt;
-                let _ = err.read_to_string(&mut stderr).await;
+        let child_opt = {
+            let mut handle = child_handle.lock().unwrap();
+            handle.take()
+        };
+        if let Some(mut child) = child_opt {
+            let status = child.wait().await.context("Failed to wait for kubectl process")?;
+    
+            if !status.success() {
+                let mut stderr = String::new();
+                if let Some(mut err) = child.stderr.take() {
+                    use tokio::io::AsyncReadExt;
+                    let _ = err.read_to_string(&mut stderr).await;
+                }
+    
+                return Err(anyhow!("kubectl port-forward failed: {}", stderr));
             }
-            
-            return Err(anyhow!("kubectl port-forward failed: {}", stderr));
         }
-        
+    
         Ok(())
     })
 }

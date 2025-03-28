@@ -8,6 +8,8 @@ use std::path::Path;
 pub struct ForwardConfig {
     pub resource: String,
     pub local_port: Option<u16>,
+    pub timeout: Option<u64>,
+    pub liveness_probe: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
