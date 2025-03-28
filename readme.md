@@ -82,6 +82,8 @@ Then run the tool with:
 - `--timeout <TIMEOUT>`: Timeout in seconds for the port-forward connection.
 - `--liveness_probe <PATH>`: HTTP endpoint path used for health checks (e.g., `/ping`).
 - `--show_liveness`: Flag to enable logging for liveness probe requests (disabled by default).
+- `--requests_log_file <FILE>`: Path to a log file for writing detailed requests/responses. Output is in plain text without ANSI color codes, and JSON payloads are serialized as one line.
+- `--requests_log_verbosity <VERBOSE>`: Verbosity level for file logging (0-3). Higher values include additional details, such as full request/response payloads.
 
 ### Verbosity Levels Explained
 
