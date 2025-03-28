@@ -54,6 +54,8 @@ pub async fn start_single(
                         true,
                     );
                     
+                    println!("{} Port-forward active, waiting for completion...", "🔄".bright_cyan());
+                    
                     // Wait for port-forward to complete or fail
                     let result = pf.await;
                     

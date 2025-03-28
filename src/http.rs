@@ -18,9 +18,9 @@ async fn proxy_request(
     let method = req.method().clone();
     let path = req.uri().path().to_string();
     
-    // Log the incoming request (only if verbose level > 0)
+    // Always log the incoming request if verbose level > 0
     if verbose >= 1 {
-        cli::print_request(method.as_str(), &path, None, None, verbose);
+        println!("{} Received request: {} {}", "📥".bright_blue(), method.as_str(), path);
     }
     
     // Check if port-forward is active
@@ -91,19 +91,38 @@ async fn proxy_request(
     let client = Client::new();
     let target_req = target_req.body(req_body_content).unwrap();
     
+    // Log that we're forwarding the request
+    if verbose >= 1 {
+        println!("{} Forwarding to: {}", "📤".bright_yellow(), target_uri);
+    }
+
     match client.request(target_req).await {
         Ok(response) => {
             let status = response.status();
+            let elapsed = start.elapsed();
             
             // Always log the response status if verbosity level is at least 1
-            // This is outside the verbosity check to ensure all requests are logged
             if verbose >= 1 {
-                cli::print_request(
+                let status_colored = match status.as_u16() {
+                    200..=299 => status.as_str().bright_green(),
+                    300..=399 => status.as_str().bright_cyan(),
+                    400..=499 => status.as_str().bright_yellow(),
+                    _ => status.as_str().bright_red(),
+                };
+                
+                let ms = elapsed.as_millis();
+                let duration_colored = match ms {
+                    0..=100 => format!("{}ms", ms).bright_green(),
+                    101..=300 => format!("{}ms", ms).bright_yellow(),
+                    _ => format!("{}ms", ms).bright_red(),
+                };
+                
+                println!("{} {} {} → {} ({})", 
+                    "✓".bright_green(),
                     method.as_str(),
-                    &path,
-                    Some(status.as_u16()),
-                    Some(start.elapsed()),
-                    verbose,
+                    path,
+                    status_colored,
+                    duration_colored
                 );
             }
             
