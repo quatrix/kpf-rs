@@ -155,9 +155,9 @@ async fn proxy_request(
                 use std::io::Write;
                 let timestamp = chrono::Utc::now().to_rfc3339();
                 let log_line = if requests_log_verbosity >= 3 {
-                    format!("{} {} - {} {} → {} ({}) [Payload: {}]\n", timestamp, resource, method, path, status, elapsed.as_millis(), opt_resp_body.as_deref().unwrap_or("N/A"))
+                    format!("{} {} - {} {} → {} ({}) [Payload: {}]\n", timestamp, resource, method.as_str(), path, status.to_string(), elapsed.as_millis(), opt_resp_body.as_deref().unwrap_or("N/A"))
                 } else {
-                    format!("{} {} - {} {} → {} ({})\n", timestamp, resource, method, path, status, elapsed.as_millis())
+                    format!("{} {} - {} {} → {} ({})\n", timestamp, resource, method.as_str(), path, status.to_string(), elapsed.as_millis())
                 };
                 if let Ok(mut file) = OpenOptions::new().append(true).create(true).open(log_path) {
                     let _ = file.write_all(log_line.as_bytes());
