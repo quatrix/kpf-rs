@@ -2,11 +2,13 @@
   "forwards": [
     {
       "resource": "service/nes-pn:80",
-      "local_port": 55400
+      "local_port": 55400,
+      "liveness_probe": "/ping"
     },
     {
       "resource": "service/api-auth:80",
-      "local_port": 55300
+      "local_port": 55300,
+      "liveness_probe": "/ping"
     }
   ],
   "verbose": 1
