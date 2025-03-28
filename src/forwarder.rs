@@ -37,7 +37,7 @@ pub async fn start_single(
 ) -> Result<()> {
     let (tx, mut rx) = mpsc::channel::<bool>(10);
     let port_forward_status = Arc::new(Mutex::new(false));
-    let child_handle = std::sync::Arc::new(std::sync::Mutex::new(None));
+    let child_handle = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let port_forward_status_clone = port_forward_status.clone();
 
     // Find an available port for the internal port-forward
@@ -113,7 +113,7 @@ pub async fn start_single(
                         tokio::select! {
                             res = pf_future => res,
                             liveness_err = liveness_future => {
-                                if let Some(mut child) = child_handle.lock().unwrap().take() {
+                                if let Some(mut child) = child_handle.lock().await.take() {
                                     let _ = child.kill().await;
                                 }
                                 liveness_err

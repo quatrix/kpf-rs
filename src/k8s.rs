@@ -52,7 +52,7 @@ pub async fn create_port_forward(
     resource_name: &str,
     resource_port: u16,
     local_port: u16,
-    child_handle: std::sync::Arc<std::sync::Mutex<Option<tokio::process::Child>>>,
+    child_handle: std::sync::Arc<tokio::sync::Mutex<Option<tokio::process::Child>>>,
 ) -> Result<impl futures::Future<Output = Result<()>>> {
     // Validate that the resource exists
     validate_resource(resource_type, resource_name).await?;
@@ -67,13 +67,13 @@ pub async fn create_port_forward(
     
     let child = cmd.spawn().context("Failed to start kubectl port-forward")?;
     {
-        let mut handle = child_handle.lock().unwrap();
+        let mut handle = child_handle.lock().await;
         *handle = Some(child);
     }
     
     Ok(async move {
         let child_opt = {
-            let mut handle = child_handle.lock().unwrap();
+            let mut handle = child_handle.lock().await;
             handle.take()
         };
         if let Some(mut child) = child_opt {
