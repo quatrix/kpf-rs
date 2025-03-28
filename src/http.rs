@@ -18,9 +18,11 @@ async fn proxy_request(
     let method = req.method().clone();
     let path = req.uri().path().to_string();
     
-    // Check for internal status endpoint
+    // Check for internal endpoints
     if path == "/_internal/status" {
         return handle_internal_status(port_forward_status, verbose).await;
+    } else if path == "/_internal/health" {
+        return handle_health_check(port_forward_status).await;
     }
     
     // Always log the incoming request if verbose level > 0
@@ -184,6 +186,28 @@ async fn proxy_request(
     }
 }
 
+async fn handle_health_check(
+    port_forward_status: Arc<Mutex<bool>>,
+) -> Result<Response<Body>, hyper::Error> {
+    // Get current status
+    let is_active = {
+        let status = port_forward_status.lock().unwrap();
+        *status
+    };
+    
+    // Return appropriate status code based on port-forward status
+    let (status_code, body) = if is_active {
+        (StatusCode::OK, "OK")
+    } else {
+        (StatusCode::SERVICE_UNAVAILABLE, "Port-forward not active")
+    };
+    
+    let mut response = Response::new(Body::from(body));
+    *response.status_mut() = status_code;
+    
+    Ok(response)
+}
+
 async fn handle_internal_status(
     port_forward_status: Arc<Mutex<bool>>,
     verbose: u8,
@@ -200,11 +224,26 @@ async fn handle_internal_status(
             "port_forward_active": is_active,
             "timestamp": chrono::Utc::now().to_rfc3339(),
             "verbose_level": verbose,
+            "status_text": if is_active { "CONNECTED" } else { "DISCONNECTED" },
         },
         "version": env!("CARGO_PKG_VERSION"),
         "debug_info": {
             "process_id": std::process::id(),
             "system_time": format!("{:?}", std::time::SystemTime::now()),
+            "uptime": format!("{:?}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap()),
+            "memory_usage": format!("{} MB", std::process::Command::new("ps")
+                .args(&["-o", "rss=", "-p", &std::process::id().to_string()])
+                .output()
+                .map(|output| String::from_utf8_lossy(&output.stdout).trim().parse::<u64>().unwrap_or(0) / 1024)
+                .unwrap_or(0)),
+        },
+        "help": {
+            "endpoints": {
+                "/_internal/status": "This endpoint - shows port-forward status",
+                "/_internal/health": "Health check endpoint",
+                "/_internal/metrics": "Metrics endpoint (if enabled)",
+                "/<any-path>": "Proxied to the target service"
+            }
         }
     });
     
