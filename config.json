@@ -1,0 +1,13 @@
+{
+  "forwards": [
+    {
+      "resource": "service/my-service:8080",
+      "local_port": 8000
+    },
+    {
+      "resource": "pod/my-pod:9000",
+      "local_port": 9000
+    }
+  ],
+  "verbose": 2
+}
