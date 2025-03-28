@@ -35,6 +35,8 @@ pub async fn start_single(
     timeout: Option<u64>,
     liveness_probe: Option<String>,
     show_liveness: bool,
+    requests_log_file: Option<std::path::PathBuf>,
+    requests_log_verbosity: u8,
 ) -> Result<()> {
     let (tx, mut rx) = mpsc::channel::<bool>(10);
     let port_forward_status = Arc::new(Mutex::new(false));
@@ -48,7 +50,7 @@ pub async fn start_single(
     // Start HTTP server on the user-specified port
     let resource_prefix = format!("{}/{}:{}", resource_type, resource_name, resource_port);
     let http_handle = tokio::spawn(async move {
-        start_http_server(local_port, internal_port, port_forward_status_clone, verbose, show_liveness, resource_prefix).await
+        start_http_server(local_port, internal_port, port_forward_status_clone, verbose, show_liveness, resource_prefix, requests_log_file.clone(), requests_log_verbosity).await
     });
 
     // Start port-forward manager
@@ -173,7 +175,7 @@ pub async fn start_single(
     Ok(())
 }
 
-pub async fn start_from_config(config: Config, show_liveness: bool) -> Result<()> {
+pub async fn start_from_config(config: Config, show_liveness: bool, requests_log_file: Option<std::path::PathBuf>, requests_log_verbosity: u8) -> Result<()> {
     let verbose = config.verbose.unwrap_or(1);
     let mut handles = Vec::new();
     
@@ -197,6 +199,8 @@ pub async fn start_from_config(config: Config, show_liveness: bool) -> Result<()
                 forward.timeout,
                 forward.liveness_probe,
                 show_liveness,
+                requests_log_file.clone(),
+                requests_log_verbosity,
             ).await {
                 cli::print_error(&format!("Forward failed: {}", e));
             }

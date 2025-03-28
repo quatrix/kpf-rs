@@ -41,6 +41,12 @@ struct Args {
     /// Show liveness probe logs (disabled by default)
     #[arg(long, default_value_t = false)]
     show_liveness: bool,
+    /// Path to log file for writing requests/responses
+    #[arg(long)]
+    requests_log_file: Option<PathBuf>,
+    /// Verbosity level for requests log file (0-3)
+    #[arg(long, default_value = "1")]
+    requests_log_verbosity: u8,
 }
 
 #[tokio::main]

@@ -15,6 +15,8 @@ async fn proxy_request(
     verbose: u8,
     show_liveness: bool,
     resource: String,
+    requests_log_file: Option<std::path::PathBuf>,
+    requests_log_verbosity: u8,
 ) -> Result<Response<Body>, hyper::Error> {
     let start = Instant::now();
     let method = req.method().clone();
@@ -127,7 +129,19 @@ async fn proxy_request(
                     duration_colored
                 );
             }
-            
+            if let Some(ref log_path) = requests_log_file {
+                use std::fs::OpenOptions;
+                use std::io::Write;
+                let timestamp = chrono::Utc::now().to_rfc3339();
+                let log_line = if requests_log_verbosity >= 3 {
+                    format!("{} {} - {} {} → {} ({}) [Payload: {}]\n", timestamp, resource, method, path, status, elapsed.as_millis(), resp_body)
+                } else {
+                    format!("{} {} - {} {} → {} ({})\n", timestamp, resource, method, path, status, elapsed.as_millis())
+                };
+                if let Ok(mut file) = OpenOptions::new().append(true).create(true).open(log_path) {
+                    let _ = file.write_all(log_line.as_bytes());
+                }
+            }
             // Print request body if verbosity level is 2 or higher and method is not GET
             if verbose >= 2 && req_body_for_logging.is_some() && method != hyper::Method::GET {
                 println!("{} Request body:\n{}", "📄".bright_blue(), req_body_for_logging.unwrap());
@@ -173,6 +187,19 @@ async fn proxy_request(
             let mut response = Response::new(Body::from(error_msg));
             *response.status_mut() = StatusCode::BAD_GATEWAY;
             
+            if let Some(ref log_path) = requests_log_file {
+                use std::fs::OpenOptions;
+                use std::io::Write;
+                let timestamp = chrono::Utc::now().to_rfc3339();
+                let log_line = if requests_log_verbosity >= 3 {
+                    format!("{} {} - {} {} → {} ({}) [Error Payload]\n", timestamp, resource, method, path, "502 Bad Gateway", start.elapsed().as_millis())
+                } else {
+                    format!("{} {} - {} {} → {} ({})\n", timestamp, resource, method, path, "502 Bad Gateway", start.elapsed().as_millis())
+                };
+                if let Ok(mut file) = OpenOptions::new().append(true).create(true).open(log_path) {
+                    let _ = file.write_all(log_line.as_bytes());
+                }
+            }
             if verbose >= 1 {
                 println!("{} {} - {} {} → {} ({})", 
                     "✗".bright_red(),
@@ -252,6 +279,8 @@ pub async fn start_http_server(
     verbose: u8,
     show_liveness: bool,
     resource: String,
+    requests_log_file: Option<std::path::PathBuf>,
+    requests_log_verbosity: u8,
 ) -> Result<(), hyper::Error> {
     let addr = SocketAddr::from(([127, 0, 0, 1], local_port));
     
@@ -266,10 +295,12 @@ pub async fn start_http_server(
         let target = target_port;
         let show_liveness = show_liveness;
         let resource = resource.clone();
+        let requests_log_file = requests_log_file.clone();
+        let requests_log_verbosity = requests_log_verbosity;
         
         async move {
             Ok::<_, Infallible>(service_fn(move |req| {
-                proxy_request(req, target, port_forward_status.clone(), verbose_level, show_liveness, resource.clone())
+                proxy_request(req, target, port_forward_status.clone(), verbose_level, show_liveness, resource.clone(), requests_log_file.clone(), requests_log_verbosity)
             }))
         }
     });
