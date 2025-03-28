@@ -27,7 +27,11 @@ async fn proxy_request(
     
     // Always log the incoming request if verbose level > 0
     if verbose >= 1 {
-        println!("{} Received request: {} {}", "📥".bright_blue(), method.as_str(), path);
+        if path == "/ping" {
+            println!("{} Health probe: {} {}", "💓".bright_magenta(), method.as_str(), path);
+        } else {
+            println!("{} Received request: {} {}", "📥".bright_blue(), method.as_str(), path);
+        }
     }
     
     // Check if port-forward is active
@@ -62,7 +66,11 @@ async fn proxy_request(
     
     // Log that we're forwarding the request
     if verbose >= 1 {
-        println!("{} Forwarding to: {}", "📤".bright_yellow(), &target_uri);
+        if path == "/ping" {
+            println!("{} Liveness probe forwarding", "🔄".bright_magenta());
+        } else {
+            println!("{} Forwarding to: {}", "📤".bright_yellow(), &target_uri);
+        }
     }
     
     let mut target_req = Request::builder()
