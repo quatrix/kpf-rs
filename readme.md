@@ -79,7 +79,7 @@ Then run the tool with:
   - **Level 1**: Basic logging and status updates.
   - **Level 2**: Additional logging, including request bodies (except for GET requests).
   - **Level 3**: Detailed logging with response body inspection and JSON syntax highlighting.
-  - **Level 4**: Maximum debug output for in-depth troubleshooting.
+  - **Level 4**: Currently behaves the same as level 3 (maximum logging available).
 - `--timeout <TIMEOUT>`: Timeout in seconds for the port-forward connection.
 - `--liveness_probe <PATH>`: HTTP endpoint path used for health checks (e.g., `/ping`).
 - `--show_liveness`: Flag to enable logging for liveness probe requests (disabled by default).
