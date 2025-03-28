@@ -12,7 +12,7 @@ pub fn print_request(
     path: &str,
     status: Option<u16>,
     duration: Option<Duration>,
-    verbose: u8,
+    _verbose: u8,
 ) {
     // This function is only called when verbose >= 1, so we don't need to check again
     let method_colored = match method {

@@ -53,6 +53,11 @@ async fn proxy_request(
         req.uri().path_and_query().map(|x| x.as_str()).unwrap_or("")
     );
     
+    // Log that we're forwarding the request
+    if verbose >= 1 {
+        println!("{} Forwarding to: {}", "📤".bright_yellow(), &target_uri);
+    }
+    
     let mut target_req = Request::builder()
         .method(req.method().clone())
         .uri(target_uri);
@@ -91,10 +96,6 @@ async fn proxy_request(
     let client = Client::new();
     let target_req = target_req.body(req_body_content).unwrap();
     
-    // Log that we're forwarding the request
-    if verbose >= 1 {
-        println!("{} Forwarding to: {}", "📤".bright_yellow(), target_uri);
-    }
 
     match client.request(target_req).await {
         Ok(response) => {
