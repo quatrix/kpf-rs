@@ -192,6 +192,8 @@ pub async fn start_from_config(config: Config) -> Result<()> {
                 resource_port,
                 local_port,
                 verbose,
+                forward.timeout,
+                forward.liveness_probe,
             ).await {
                 cli::print_error(&format!("Forward failed: {}", e));
             }
