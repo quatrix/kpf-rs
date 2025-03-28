@@ -183,7 +183,7 @@ pub async fn start_from_config(config: Config, show_liveness: bool, requests_log
         "📋".bright_cyan(), 
         config.forwards.len().to_string().bright_yellow());
     
-    let requests_log_file_clone = requests_log_file.clone();
+    let requests_log_file_arc = std::sync::Arc::new(requests_log_file.clone());
     
     for forward in config.forwards {
         let (resource_type, resource_name, resource_port) = parse_resource(&forward.resource)
@@ -201,7 +201,7 @@ pub async fn start_from_config(config: Config, show_liveness: bool, requests_log
                 forward.timeout,
                 forward.liveness_probe,
                 show_liveness,
-                requests_log_file_clone.clone(),
+                (*requests_log_file_arc).clone(),
                 requests_log_verbosity,
             ).await {
                 cli::print_error(&format!("Forward failed: {}", e));
