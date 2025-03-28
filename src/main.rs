@@ -39,6 +39,9 @@ struct Args {
     /// Liveness probe HTTP endpoint path (e.g., /ping)
     #[arg(long)]
     liveness_probe: Option<String>,
+    /// Show liveness probe logs (disabled by default)
+    #[arg(long, default_value_t = false)]
+    show_liveness: bool,
 }
 
 #[tokio::main]
@@ -58,7 +61,7 @@ async fn main() -> anyhow::Result<()> {
         // Load config file and start multiple port-forwards
         // Load config file and start multiple port-forwards
         let config = config::load_config(config_path)?;
-        forwarder::start_from_config(config).await?;
+        forwarder::start_from_config(config, args.show_liveness).await?;
     } else if let Some(resource_str) = args.resource {
         // Parse resource string and start single port-forward
         let (resource_type, resource_name, resource_port) = k8s::parse_resource(&resource_str)?;
@@ -84,6 +87,7 @@ async fn main() -> anyhow::Result<()> {
             args.verbose,
             args.timeout,
             args.liveness_probe,
+            args.show_liveness,
         ).await?;
     }
     

@@ -34,6 +34,7 @@ pub async fn start_single(
     verbose: u8,
     timeout: Option<u64>,
     liveness_probe: Option<String>,
+    show_liveness: bool,
 ) -> Result<()> {
     let (tx, mut rx) = mpsc::channel::<bool>(10);
     let port_forward_status = Arc::new(Mutex::new(false));
@@ -46,7 +47,7 @@ pub async fn start_single(
 
     // Start HTTP server on the user-specified port
     let http_handle = tokio::spawn(async move {
-        start_http_server(local_port, internal_port, port_forward_status_clone, verbose).await
+        start_http_server(local_port, internal_port, port_forward_status_clone, verbose, show_liveness).await
     });
 
     // Start port-forward manager
@@ -171,7 +172,7 @@ pub async fn start_single(
     Ok(())
 }
 
-pub async fn start_from_config(config: Config) -> Result<()> {
+pub async fn start_from_config(config: Config, show_liveness: bool) -> Result<()> {
     let verbose = config.verbose.unwrap_or(1);
     let mut handles = Vec::new();
     
@@ -194,6 +195,7 @@ pub async fn start_from_config(config: Config) -> Result<()> {
                 verbose,
                 forward.timeout,
                 forward.liveness_probe,
+                show_liveness,
             ).await {
                 cli::print_error(&format!("Forward failed: {}", e));
             }

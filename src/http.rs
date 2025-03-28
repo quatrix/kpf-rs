@@ -13,6 +13,7 @@ async fn proxy_request(
     target_port: u16,
     port_forward_status: Arc<Mutex<bool>>,
     verbose: u8,
+    show_liveness: bool,
 ) -> Result<Response<Body>, hyper::Error> {
     let start = Instant::now();
     let method = req.method().clone();
@@ -28,7 +29,9 @@ async fn proxy_request(
     // Always log the incoming request if verbose level > 0
     if verbose >= 1 {
         if path == "/ping" {
-            println!("{} Health probe: {} {}", "💓".bright_magenta(), method.as_str(), path);
+            if show_liveness {
+                println!("{} Health probe: {} {}", "💓".bright_magenta(), method.as_str(), path);
+            }
         } else {
             println!("{} Received request: {} {}", "📥".bright_blue(), method.as_str(), path);
         }
@@ -67,7 +70,9 @@ async fn proxy_request(
     // Log that we're forwarding the request
     if verbose >= 1 {
         if path == "/ping" {
-            println!("{} Liveness probe forwarding", "🔄".bright_magenta());
+            if show_liveness {
+                println!("{} Liveness probe forwarding", "🔄".bright_magenta());
+            }
         } else {
             println!("{} Forwarding to: {}", "📤".bright_yellow(), &target_uri);
         }
@@ -275,6 +280,7 @@ pub async fn start_http_server(
     target_port: u16,
     port_forward_status: Arc<Mutex<bool>>,
     verbose: u8,
+    show_liveness: bool,
 ) -> Result<(), hyper::Error> {
     let addr = SocketAddr::from(([127, 0, 0, 1], local_port));
     
@@ -287,10 +293,11 @@ pub async fn start_http_server(
         let port_forward_status = port_forward_status_clone.clone();
         let verbose_level = verbose;
         let target = target_port;
+        let show_liveness = show_liveness;
         
         async move {
             Ok::<_, Infallible>(service_fn(move |req| {
-                proxy_request(req, target, port_forward_status.clone(), verbose_level)
+                proxy_request(req, target, port_forward_status.clone(), verbose_level, show_liveness)
             }))
         }
     });
