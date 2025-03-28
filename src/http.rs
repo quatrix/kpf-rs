@@ -18,7 +18,7 @@ async fn proxy_request(
     let method = req.method().clone();
     let path = req.uri().path().to_string();
     
-    // Log the incoming request
+    // Log the incoming request (only if verbose level > 0)
     if verbose >= 1 {
         cli::print_request(method.as_str(), &path, None, None, verbose);
     }
@@ -64,9 +64,30 @@ async fn proxy_request(
         }
     }
     
+    // Get request body for verbose logging if needed
+    let (parts, body) = req.into_parts();
+    let req_body = if verbose >= 2 {
+        // Clone the body for inspection if verbosity level requires it
+        let bytes = hyper::body::to_bytes(body).await.unwrap_or_default();
+        let body_clone = bytes.clone();
+        
+        // Try to parse as JSON for pretty printing
+        if let Ok(json_str) = String::from_utf8(bytes.to_vec()) {
+            if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(&json_str) {
+                Some(serde_json::to_string_pretty(&json_value).unwrap_or(json_str))
+            } else {
+                Some(format!("Binary data: {} bytes", body_clone.len()))
+            }
+        } else {
+            Some(format!("Binary data: {} bytes", body_clone.len()))
+        }
+    } else {
+        None
+    };
+    
     // Forward the request
     let client = Client::new();
-    let target_req = target_req.body(req.into_body()).unwrap();
+    let target_req = target_req.body(Body::from(body)).unwrap();
     
     match client.request(target_req).await {
         Ok(response) => {
@@ -80,6 +101,34 @@ async fn proxy_request(
                     Some(start.elapsed()),
                     verbose,
                 );
+                
+                // Print request body if verbosity level is 2 or higher
+                if verbose >= 2 && req_body.is_some() {
+                    println!("{} Request body:\n{}", "📄".bright_blue(), req_body.unwrap());
+                }
+                
+                // For verbosity level 3, also capture and print response body
+                if verbose >= 3 {
+                    let (parts, body) = response.into_parts();
+                    let bytes = hyper::body::to_bytes(body).await.unwrap_or_default();
+                    let body_clone = bytes.clone();
+                    
+                    // Try to parse as JSON for pretty printing
+                    let resp_body = if let Ok(json_str) = String::from_utf8(bytes.to_vec()) {
+                        if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(&json_str) {
+                            serde_json::to_string_pretty(&json_value).unwrap_or(json_str)
+                        } else {
+                            format!("Binary data: {} bytes", body_clone.len())
+                        }
+                    } else {
+                        format!("Binary data: {} bytes", body_clone.len())
+                    };
+                    
+                    println!("{} Response body:\n{}", "📄".bright_green(), resp_body);
+                    
+                    // Reconstruct response
+                    return Ok(Response::from_parts(parts, Body::from(body_clone)));
+                }
             }
             
             Ok(response)

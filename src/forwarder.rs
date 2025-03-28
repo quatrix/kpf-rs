@@ -41,7 +41,7 @@ pub async fn start_single(
             }
             
             match create_port_forward(&resource_type, &resource_name, resource_port, local_port).await {
-                Ok(mut pf) => {
+                Ok(pf) => {
                     {
                         let mut status = port_forward_status.lock().unwrap();
                         *status = true;

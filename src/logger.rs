@@ -1,13 +1,9 @@
 use colored::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
-pub fn init(verbose: u8) {
-    let filter = match verbose {
-        1 => "info",
-        2 => "debug",
-        3 | 4 => "trace",
-        _ => "info",
-    };
+pub fn init(_verbose: u8) {
+    // Use a fixed log level for the application
+    let filter = "info";
     
     let env_filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new(filter));

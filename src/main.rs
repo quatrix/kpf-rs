@@ -41,7 +41,11 @@ async fn main() -> anyhow::Result<()> {
     // Initialize logger with verbosity level
     logger::init(args.verbose);
     
+    // Print startup banner
+    cli::print_startup_banner();
+    
     println!("{} Kubernetes port-forward utility", "🚀".bright_green());
+    println!("{} Verbosity level: {}", "🔊".bright_yellow(), args.verbose);
     
     if let Some(config_path) = args.config {
         // Load config file and start multiple port-forwards
