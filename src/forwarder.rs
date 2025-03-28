@@ -186,6 +186,7 @@ pub async fn start_from_config(config: Config, show_liveness: bool, requests_log
     let requests_log_file_arc = std::sync::Arc::new(requests_log_file.clone());
     
     for forward in config.forwards {
+        let requests_log_file_clone = requests_log_file_arc.clone();
         let (resource_type, resource_name, resource_port) = parse_resource(&forward.resource)
             .context(format!("Failed to parse resource: {}", forward.resource))?;
         
