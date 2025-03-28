@@ -1,13 +1,13 @@
 {
   "forwards": [
     {
-      "resource": "service/my-service:8080",
-      "local_port": 8000
+      "resource": "service/nes-pn:80",
+      "local_port": 55400
     },
     {
-      "resource": "pod/my-pod:9000",
-      "local_port": 9000
+      "resource": "service/api-auth:80",
+      "local_port": 55300
     }
   ],
-  "verbose": 2
+  "verbose": 1
 }
