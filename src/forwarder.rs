@@ -45,7 +45,9 @@ pub async fn start_single(
                     {
                         let mut status = port_forward_status.lock().unwrap();
                         *status = true;
-                        println!("{} Port-forward status set to ACTIVE", "🔄".bright_cyan());
+                        println!("{} Port-forward status set to ACTIVE (PID: {})", 
+                            "🔄".bright_cyan(), 
+                            std::process::id());
                     }
                     
                     cli::print_forwarding_status(
@@ -68,7 +70,9 @@ pub async fn start_single(
                     {
                         let mut status = port_forward_status.lock().unwrap();
                         *status = false;
-                        println!("{} Port-forward status set to INACTIVE", "🔄".bright_red());
+                        println!("{} Port-forward status set to INACTIVE (PID: {})", 
+                            "🔄".bright_red(), 
+                            std::process::id());
                     }
                     
                     cli::print_forwarding_status(

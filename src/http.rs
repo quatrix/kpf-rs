@@ -202,6 +202,10 @@ async fn handle_internal_status(
             "verbose_level": verbose,
         },
         "version": env!("CARGO_PKG_VERSION"),
+        "debug_info": {
+            "process_id": std::process::id(),
+            "system_time": format!("{:?}", std::time::SystemTime::now()),
+        }
     });
     
     let status_json = serde_json::to_string_pretty(&status_info).unwrap();
