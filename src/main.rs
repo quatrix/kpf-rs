@@ -16,7 +16,6 @@ mod logger;
     version,
     author
 )]
-#[group(required = true, multiple = false)]
 struct Args {
     /// Kubernetes resource to port-forward (format: type/name:port)
     #[arg(help = "Example: pod/my-pod:8080 or service/my-service:80", group = "input")]
