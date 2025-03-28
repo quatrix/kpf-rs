@@ -56,7 +56,7 @@ async fn main() -> anyhow::Result<()> {
         let (resource_type, resource_name, resource_port) = k8s::parse_resource(&args.resource)?;
         let local_port = args.local_port.unwrap_or(resource_port);
         
-        println!("{} Forwarding {} {}/{} port {} to local port {}", 
+        println!("{} Forwarding {} {}/{} port {} via HTTP proxy on port {}", 
             "📡".cyan(),
             resource_type.bright_blue(),
             resource_name.bright_yellow(),

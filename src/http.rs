@@ -53,9 +53,9 @@ async fn proxy_request(
         return Ok(response);
     }
     
-    // Create a new request with the target URL
+    // Create a new request with the target URL (using the internal port)
     let target_uri = format!(
-        "http://localhost:{}{}", 
+        "http://127.0.0.1:{}{}", 
         target_port, 
         req.uri().path_and_query().map(|x| x.as_str()).unwrap_or("")
     );

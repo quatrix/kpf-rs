@@ -13,6 +13,19 @@ use tokio::time::sleep;
 const MAX_RETRY_ATTEMPTS: u32 = 5;
 const RETRY_DELAY_MS: u64 = 1000;
 
+use std::net::TcpListener;
+
+fn find_available_port() -> Result<u16> {
+    // Bind to port 0 to get an available port from the OS
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .context("Failed to bind to random port")?;
+    let port = listener.local_addr()
+        .context("Failed to get local address")?
+        .port();
+    
+    Ok(port)
+}
+
 pub async fn start_single(
     resource_type: String,
     resource_name: String,
@@ -24,9 +37,13 @@ pub async fn start_single(
     let port_forward_status = Arc::new(Mutex::new(false));
     let port_forward_status_clone = port_forward_status.clone();
 
-    // Start HTTP server
+    // Find an available port for the internal port-forward
+    let internal_port = find_available_port()?;
+    println!("{} Using internal port {} for port-forward", "🔌".bright_cyan(), internal_port);
+
+    // Start HTTP server on the user-specified port
     let http_handle = tokio::spawn(async move {
-        start_http_server(local_port, resource_port, port_forward_status_clone, verbose).await
+        start_http_server(local_port, internal_port, port_forward_status_clone, verbose).await
     });
 
     // Start port-forward manager
@@ -40,7 +57,7 @@ pub async fn start_single(
                 sleep(Duration::from_millis(RETRY_DELAY_MS)).await;
             }
             
-            match create_port_forward(&resource_type, &resource_name, resource_port, local_port).await {
+            match create_port_forward(&resource_type, &resource_name, resource_port, internal_port).await {
                 Ok(pf) => {
                     {
                         let mut status = port_forward_status.lock().unwrap();
@@ -52,10 +69,15 @@ pub async fn start_single(
                     
                     cli::print_forwarding_status(
                         &format!("{}/{}", resource_type, resource_name),
-                        local_port,
+                        internal_port,
                         resource_port,
                         true,
                     );
+                    
+                    println!("{} HTTP proxy listening on port {} and forwarding to internal port {}", 
+                        "🔄".bright_blue(), 
+                        local_port.to_string().bright_green(),
+                        internal_port.to_string().bright_yellow());
                     
                     println!("{} Port-forward active, waiting for connection to establish...", "🔄".bright_cyan());
                     
@@ -77,7 +99,7 @@ pub async fn start_single(
                     
                     cli::print_forwarding_status(
                         &format!("{}/{}", resource_type, resource_name),
-                        local_port,
+                        internal_port,
                         resource_port,
                         false,
                     );
