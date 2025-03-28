@@ -202,7 +202,7 @@ pub async fn start_from_config(config: Config, show_liveness: bool, requests_log
                 forward.timeout,
                 forward.liveness_probe,
                 show_liveness,
-                requests_log_file_clone.clone(),
+                (*requests_log_file_clone).clone(),
                 requests_log_verbosity,
             ).await {
                 cli::print_error(&format!("Forward failed: {}", e));
