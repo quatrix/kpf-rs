@@ -29,7 +29,7 @@ async fn proxy_request(
     // Always log the incoming request if verbose level > 0
     if verbose >= 1 {
         if path == "/ping" {
-            if show_liveness {
+            if show_liveness && req.headers().get("x-internal-probe").is_none() {
                 println!("{} Health probe: {} {}", "💓".bright_magenta(), method.as_str(), path);
             }
         } else {
@@ -70,7 +70,7 @@ async fn proxy_request(
     // Log that we're forwarding the request
     if verbose >= 1 {
         if path == "/ping" {
-            if show_liveness {
+            if show_liveness && req.headers().get("x-internal-probe").is_none() {
                 println!("{} Liveness probe forwarding", "🔄".bright_magenta());
             }
         } else {

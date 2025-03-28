@@ -98,7 +98,7 @@ pub async fn start_single(
                                 sleep(Duration::from_secs(5)).await;
                                 let client = Client::new();
                                 let url = format!("http://127.0.0.1:{}{}", local_port, probe_path);
-                                let req = Request::get(url).body(Body::empty()).unwrap();
+                                let req = Request::get(url).header("x-internal-probe", "true").body(Body::empty()).unwrap();
                                 let timeout_duration = std::time::Duration::from_secs(timeout.unwrap_or(3));
                                 let res = tokio::time::timeout(timeout_duration, client.request(req)).await;
                                 match res {
