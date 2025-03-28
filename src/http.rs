@@ -34,12 +34,12 @@ async fn proxy_request(
         *response.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
         
         if verbose >= 1 {
-            cli::print_request(
+            println!("{} {} {} → {} ({})", 
+                "✗".bright_red(),
                 method.as_str(),
-                &path,
-                Some(StatusCode::SERVICE_UNAVAILABLE.as_u16()),
-                Some(start.elapsed()),
-                verbose,
+                path,
+                "503 Service Unavailable".bright_red(),
+                format!("{}ms", start.elapsed().as_millis()).bright_yellow()
             );
         }
         
@@ -164,12 +164,12 @@ async fn proxy_request(
             *response.status_mut() = StatusCode::BAD_GATEWAY;
             
             if verbose >= 1 {
-                cli::print_request(
+                println!("{} {} {} → {} ({})", 
+                    "✗".bright_red(),
                     method.as_str(),
-                    &path,
-                    Some(StatusCode::BAD_GATEWAY.as_u16()),
-                    Some(start.elapsed()),
-                    verbose,
+                    path,
+                    "502 Bad Gateway".bright_red(),
+                    format!("{}ms", start.elapsed().as_millis()).bright_yellow()
                 );
             }
             

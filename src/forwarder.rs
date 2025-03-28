@@ -54,7 +54,12 @@ pub async fn start_single(
                         true,
                     );
                     
-                    println!("{} Port-forward active, waiting for completion...", "🔄".bright_cyan());
+                    println!("{} Port-forward active, waiting for connection to establish...", "🔄".bright_cyan());
+                    
+                    // Add a small delay to ensure the port-forward is fully established
+                    sleep(Duration::from_millis(500)).await;
+                    
+                    println!("{} Port-forward ready to accept connections", "✅".bright_green());
                     
                     // Wait for port-forward to complete or fail
                     let result = pf.await;
