@@ -67,7 +67,7 @@ async fn main() -> anyhow::Result<()> {
         // Load config file and start multiple port-forwards
         let mut config = config::load_config(config_path)?;
         config.verbose = Some(args.verbose);
-        forwarder::start_from_config(config, args.show_liveness).await?;
+        forwarder::start_from_config(config, args.show_liveness, args.requests_log_file, args.requests_log_verbosity).await?;
     } else if let Some(resource_str) = args.resource {
         // Parse resource string and start single port-forward
         let (resource_type, resource_name, resource_port) = k8s::parse_resource(&resource_str)?;

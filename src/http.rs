@@ -103,8 +103,6 @@ async fn proxy_request(
         Ok(response) => {
             let status = response.status();
             let elapsed = start.elapsed();
-            
-            // Always log the response status if verbosity level is at least 1
             if verbose >= 1 {
                 let status_colored = match status.as_u16() {
                     200..=299 => status.as_str().bright_green(),
@@ -112,15 +110,13 @@ async fn proxy_request(
                     400..=499 => status.as_str().bright_yellow(),
                     _ => status.as_str().bright_red(),
                 };
-                
                 let ms = elapsed.as_millis();
                 let duration_colored = match ms {
                     0..=100 => format!("{}ms", ms).bright_green(),
                     101..=300 => format!("{}ms", ms).bright_yellow(),
                     _ => format!("{}ms", ms).bright_red(),
                 };
-                
-                println!("{} {} - {} {} → {} ({})", 
+                println!("{} {} - {} {} → {} ({})",
                     "✓".bright_green(),
                     resource,
                     method.as_str(),
@@ -129,36 +125,15 @@ async fn proxy_request(
                     duration_colored
                 );
             }
-            if let Some(ref log_path) = requests_log_file {
-                use std::fs::OpenOptions;
-                use std::io::Write;
-                let timestamp = chrono::Utc::now().to_rfc3339();
-                let log_line = if requests_log_verbosity >= 3 {
-                    format!("{} {} - {} {} → {} ({}) [Payload: {}]\n", timestamp, resource, method, path, status, elapsed.as_millis(), resp_body)
-                } else {
-                    format!("{} {} - {} {} → {} ({})\n", timestamp, resource, method, path, status, elapsed.as_millis())
-                };
-                if let Ok(mut file) = OpenOptions::new().append(true).create(true).open(log_path) {
-                    let _ = file.write_all(log_line.as_bytes());
-                }
-            }
-            // Print request body if verbosity level is 2 or higher and method is not GET
-            if verbose >= 2 && req_body_for_logging.is_some() && method != hyper::Method::GET {
-                println!("{} Request body:\n{}", "📄".bright_blue(), req_body_for_logging.unwrap());
-            }
-            
-            // For verbosity level 3, also capture and print response body
-            if verbose >= 3 {
+            let (response, opt_resp_body) = if verbose >= 3 || (requests_log_file.is_some() && requests_log_verbosity >= 3) {
                 let (parts, body) = response.into_parts();
                 let bytes = hyper::body::to_bytes(body).await.unwrap_or_default();
                 let body_clone = bytes.clone();
-                
-                // Try to parse as JSON for pretty printing with colors if applicable
                 let content_type_json = parts.headers.get("content-type")
                     .and_then(|ct| ct.to_str().ok())
                     .map(|ct| ct.contains("application/json"))
                     .unwrap_or(false);
-                let resp_body = if let Ok(json_str) = String::from_utf8(bytes.to_vec()) {
+                let computed_resp_body = if let Ok(json_str) = String::from_utf8(bytes.to_vec()) {
                     if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(&json_str) {
                         if content_type_json {
                             colored_json::to_colored_json(&json_value).unwrap_or_else(|_| serde_json::to_string_pretty(&json_value).unwrap_or(json_str))
@@ -171,13 +146,31 @@ async fn proxy_request(
                 } else {
                     format!("Binary data: {} bytes", body_clone.len())
                 };
-                
-                println!("{} Response body:\n{}", "📄".bright_green(), resp_body);
-                
-                // Reconstruct response
-                return Ok(Response::from_parts(parts, Body::from(body_clone)));
+                (Response::from_parts(parts, Body::from(body_clone)), Some(computed_resp_body))
+            } else {
+                (response, None)
+            };
+            if let Some(ref log_path) = requests_log_file {
+                use std::fs::OpenOptions;
+                use std::io::Write;
+                let timestamp = chrono::Utc::now().to_rfc3339();
+                let log_line = if requests_log_verbosity >= 3 {
+                    format!("{} {} - {} {} → {} ({}) [Payload: {}]\n", timestamp, resource, method, path, status, elapsed.as_millis(), opt_resp_body.as_deref().unwrap_or("N/A"))
+                } else {
+                    format!("{} {} - {} {} → {} ({})\n", timestamp, resource, method, path, status, elapsed.as_millis())
+                };
+                if let Ok(mut file) = OpenOptions::new().append(true).create(true).open(log_path) {
+                    let _ = file.write_all(log_line.as_bytes());
+                }
             }
-            
+            if verbose >= 2 && req_body_for_logging.is_some() && method != hyper::Method::GET {
+                println!("{} Request body:\n{}", "📄".bright_blue(), req_body_for_logging.unwrap());
+            }
+            if verbose >= 3 {
+                if let Some(resp_body_str) = opt_resp_body {
+                    println!("{} Response body:\n{}", "📄".bright_green(), resp_body_str);
+                }
+            }
             Ok(response)
         }
         Err(e) => {
