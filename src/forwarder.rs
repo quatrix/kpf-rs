@@ -30,6 +30,7 @@ pub async fn start_single(
     resource_type: String,
     resource_name: String,
     resource_port: u16,
+    namespace: String,
     local_port: u16,
     verbose: u8,
     timeout: Option<u64>,
@@ -64,7 +65,7 @@ pub async fn start_single(
                 sleep(Duration::from_millis(RETRY_DELAY_MS)).await;
             }
             
-            match create_port_forward(&resource_type, &resource_name, resource_port, internal_port, child_handle.clone()).await {
+            match create_port_forward(&resource_type, &resource_name, resource_port, internal_port, &namespace, child_handle.clone()).await {
                 Ok(pf) => {
                     {
                         let mut status = port_forward_status.lock().unwrap();
@@ -190,6 +191,7 @@ pub async fn start_from_config(config: Config, show_liveness: bool, requests_log
         let (resource_type, resource_name, resource_port) = parse_resource(&forward.resource)
             .context(format!("Failed to parse resource: {}", forward.resource))?;
         
+        let ns = forward.namespace.unwrap_or_else(|| "default".to_string());
         let local_port = forward.local_port.unwrap_or(resource_port);
         
         let handle = tokio::spawn(async move {
@@ -197,6 +199,7 @@ pub async fn start_from_config(config: Config, show_liveness: bool, requests_log
                 resource_type,
                 resource_name,
                 resource_port,
+                ns,
                 local_port,
                 verbose,
                 forward.timeout,

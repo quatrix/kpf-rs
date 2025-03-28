@@ -29,6 +29,10 @@ struct Args {
     #[arg(long, short, group = "input")]
     config: Option<PathBuf>,
 
+    /// Kubernetes namespace (default: default)
+    #[arg(long, default_value = "default")]
+    namespace: String,
+
     /// Verbosity level (0-3)
     #[arg(long, short, default_value = "1")]
     verbose: u8,

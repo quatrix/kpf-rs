@@ -29,16 +29,17 @@ pub fn parse_resource(resource_str: &str) -> Result<(String, String, u16)> {
 pub async fn validate_resource(
     resource_type: &str,
     resource_name: &str,
+    namespace: &str,
 ) -> Result<()> {
     let client = Client::try_default().await.context("Failed to create Kubernetes client")?;
     
     match resource_type {
         "pod" => {
-            let pods: Api<Pod> = Api::default_namespaced(client);
+            let pods: Api<Pod> = Api::namespaced(client, namespace);
             pods.get(resource_name).await.context("Pod not found")?;
         }
         "service" | "svc" => {
-            let services: Api<Service> = Api::default_namespaced(client);
+            let services: Api<Service> = Api::namespaced(client, namespace);
             services.get(resource_name).await.context("Service not found")?;
         }
         _ => return Err(anyhow!("Unsupported resource type: {}", resource_type)),
@@ -52,10 +53,11 @@ pub async fn create_port_forward(
     resource_name: &str,
     resource_port: u16,
     local_port: u16,
+    namespace: &str,
     child_handle: std::sync::Arc<tokio::sync::Mutex<Option<tokio::process::Child>>>,
 ) -> Result<impl futures::Future<Output = Result<()>>> {
     // Validate that the resource exists
-    validate_resource(resource_type, resource_name).await?;
+    validate_resource(resource_type, resource_name, namespace).await?;
     
     // Use kubectl port-forward command
     let mut cmd = Command::new("kubectl");

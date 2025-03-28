@@ -50,7 +50,8 @@ Create a JSON configuration file (e.g., `config.json`) with the following struct
       "resource": "service/nes-pn:80",
       "local_port": 55400,
       "timeout": 5,
-      "liveness_probe": "/ping"
+      "liveness_probe": "/ping",
+      "namespace": "my-namespace"
     },
     {
       "resource": "service/api-auth:80",
@@ -74,6 +75,7 @@ Then run the tool with:
 - `--resource <RESOURCE>`: Specify a single Kubernetes resource to port-forward (format: type/name:port).
 - `--local_port <PORT>`: Local port to listen on when using a single resource.
 - `--config <CONFIG>`: Path to a JSON configuration file containing multiple port-forwards.
+- `--namespace <NAMESPACE>`: Kubernetes namespace to use for port forwarding (default: "default"). In config mode, each resource may specify its own namespace.
 - `--verbose <VERBOSE>`: Verbosity level (0-3). Higher values produce more detailed logs.
   - **Level 0**: No logging output.
   - **Level 1**: Basic logging and status updates.
