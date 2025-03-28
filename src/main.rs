@@ -80,7 +80,7 @@ async fn main() -> anyhow::Result<()> {
         // Note: find_available_port might not be defined yet, assuming it exists or will be added.
         // For now, let's keep the original logic of defaulting to resource_port if None.
         let local_port = args.local_port.unwrap_or(resource_port);
-
+        
         println!("{} Forwarding {} {}/{} port {} via HTTP proxy on port {}",
             "📡".cyan(),
             resource_type.bright_blue(),
@@ -93,6 +93,7 @@ async fn main() -> anyhow::Result<()> {
             resource_type,
             resource_name,
             resource_port,
+            args.namespace,
             local_port,
             args.verbose,
             args.timeout,
