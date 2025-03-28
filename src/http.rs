@@ -13,7 +13,7 @@ async fn proxy_request(
     target_port: u16,
     port_forward_status: Arc<Mutex<bool>>,
     verbose: u8,
-    show_liveness: bool,
+    _show_liveness: bool,
     resource: String,
     requests_log_file: Option<std::path::PathBuf>,
     requests_log_verbosity: u8,
