@@ -18,6 +18,15 @@ use std::thread;
 use std::time::{Duration, Instant};
 use textwrap::{self};
 
+// New struct: ForwardStatus holds the state for a port-forward
+#[derive(Clone)]
+pub struct ForwardStatus {
+    pub resource: String,
+    pub local_port: u16,
+    pub active: bool,
+    pub last_probe: Option<String>,
+}
+
 pub struct LogEntry {
     pub timestamp: chrono::DateTime<chrono::Utc>,
     pub message: String,
@@ -40,6 +49,7 @@ pub struct App {
     auto_scroll: bool,
     log_scroll_state: ScrollbarState,
     awaiting_verbosity_input: bool,
+    pub forward_statuses: Vec<ForwardStatus>,
 }
 
 impl App {
@@ -52,6 +62,7 @@ impl App {
             auto_scroll: true,
             log_scroll_state: ScrollbarState::default(),
             awaiting_verbosity_input: false,
+            forward_statuses: Vec::new(),
         }
     }
 
@@ -240,7 +251,12 @@ pub fn run_app(
 fn ui(f: &mut Frame, app: &mut App) {
     f.render_widget(Clear, f.area());
     let area = f.area();
-    render_logs_panel(f, app, area);
+    let chunks = Layout::vertical([
+        Constraint::Length(5), // fixed height for Status panel
+        Constraint::Min(0),    // remaining area for Logs
+    ]).split(area);
+    render_status_panel(f, app, chunks[0]);
+    render_logs_panel(f, app, chunks[1]);
 }
 
 fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect) {
