@@ -8,7 +8,7 @@ use ratatui::{
     prelude::*,
     widgets::{Block, Borders, Paragraph, Wrap},
     Frame,
-    text::{Span, Spans},
+    text::{Span},
 };
 use std::io;
 use std::sync::mpsc;
