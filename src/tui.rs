@@ -101,14 +101,9 @@ impl App {
         }
     }
 
-    pub fn scroll_down(&mut self, max_scroll: usize) {
-        if self.scroll < max_scroll {
-            self.scroll += 1;
-            // If we've scrolled to the bottom, re-enable auto-scroll
-            if self.scroll >= max_scroll {
-                self.auto_scroll = true;
-            }
-        }
+    pub fn scroll_down(&mut self) {
+        self.scroll += 1;
+        self.auto_scroll = false;
     }
 
     pub fn page_up(&mut self, page_size: usize) {
@@ -120,13 +115,9 @@ impl App {
         self.auto_scroll = false;
     }
 
-    pub fn page_down(&mut self, page_size: usize, max_scroll: usize) {
-        if self.scroll + page_size < max_scroll {
-            self.scroll += page_size;
-        } else {
-            self.scroll = max_scroll;
-            self.auto_scroll = true;
-        }
+    pub fn page_down(&mut self, page_size: usize) {
+        self.scroll += page_size;
+        self.auto_scroll = false;
     }
 
     pub fn scroll_to_bottom(&mut self) {
@@ -214,7 +205,7 @@ pub fn run_app(
                         }
                         KeyCode::PageDown => {
                             let page_size = terminal.size()?.height as usize / 2;
-                            app.page_down(page_size, max_scroll);
+                            app.page_down(page_size);
                         }
                         KeyCode::Home => {
                             app.scroll_to_top();
