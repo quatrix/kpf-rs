@@ -4,18 +4,20 @@ use hyper::{Body, Client, Request, Response, Server, StatusCode};
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::time::Instant;
+static HTTP_VERBOSE: AtomicU8 = AtomicU8::new(1);
 
 async fn proxy_request(
     req: Request<Body>,
     target_port: u16,
     port_forward_status: Arc<Mutex<bool>>,
-    verbose: u8,
     _show_liveness: bool,
     resource: String,
     requests_log_file: Option<std::path::PathBuf>,
     requests_log_verbosity: u8,
 ) -> Result<Response<Body>, hyper::Error> {
+    let verbose = HTTP_VERBOSE.load(Ordering::Relaxed);
     let start = Instant::now();
     let method = req.method().clone();
     let path = req.uri().path().to_string();
@@ -352,12 +354,12 @@ pub async fn start_http_server(
     local_port: u16,
     target_port: u16,
     port_forward_status: Arc<Mutex<bool>>,
-    verbose: u8,
     show_liveness: bool,
     resource: String,
     requests_log_file: Option<std::path::PathBuf>,
     requests_log_verbosity: u8,
 ) -> Result<(), hyper::Error> {
+    let verbose = HTTP_VERBOSE.load(Ordering::Relaxed);
     let addr = SocketAddr::from(([127, 0, 0, 1], local_port));
 
     crate::logger::log_info(format!(
@@ -401,4 +403,7 @@ pub async fn start_http_server(
     let server = Server::bind(&addr).serve(make_svc);
 
     server.await
+}
+pub fn set_verbose(new_level: u8) {
+    HTTP_VERBOSE.store(new_level, Ordering::Relaxed);
 }

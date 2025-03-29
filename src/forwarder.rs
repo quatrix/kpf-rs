@@ -56,7 +56,6 @@ pub async fn start_single(
             local_port,
             internal_port,
             port_forward_status_clone,
-            verbose,
             show_liveness,
             resource_prefix,
             requests_log_file.clone(),
