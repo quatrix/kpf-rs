@@ -168,7 +168,7 @@ pub fn run_app(
             size.height
         } as usize;
         let max_scroll = if app.logs.len() > available_height {
-            app.logs.len() - available_height
+            app.logs.len() - available_height + 4
         } else {
             0
         };
