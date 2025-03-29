@@ -1,5 +1,4 @@
 use anyhow::Result;
-use colored::*;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Client, Request, Response, Server, StatusCode};
 use std::convert::Infallible;
@@ -105,24 +104,20 @@ async fn proxy_request(
             let elapsed = start.elapsed();
             // Always log successful requests regardless of verbosity level
             let colored_method = match method {
-                hyper::Method::GET => "GET".bright_blue(),
-                hyper::Method::POST => "POST".bright_magenta(),
-                hyper::Method::PUT => "PUT".bright_yellow(),
-                hyper::Method::DELETE => "DELETE".bright_red(),
-                _ => method.as_str().normal(),
+                hyper::Method::GET => "GET",
+                hyper::Method::POST => "POST",
+                hyper::Method::PUT => "PUT",
+                hyper::Method::DELETE => "DELETE",
+                _ => method.as_str(),
             };
             let status_colored = match status.as_u16() {
-                200..=299 => status.as_str().bright_green(),
-                300..=399 => status.as_str().bright_cyan(),
-                400..=499 => status.as_str().bright_yellow(),
-                _ => status.as_str().bright_red(),
+                200..=299 => status.as_str(),
+                300..=399 => status.as_str(),
+                400..=499 => status.as_str(),
+                _ => status.as_str(),
             };
             let ms = elapsed.as_millis();
-            let duration_colored = match ms {
-                0..=100 => format!("{}ms", ms).bright_green(),
-                101..=300 => format!("{}ms", ms).bright_yellow(),
-                _ => format!("{}ms", ms).bright_red(),
-            };
+            let duration_colored = format!("{}ms", ms);
 
             // Always log to the TUI logger
             crate::logger::log_success(format!(
@@ -335,11 +330,11 @@ async fn handle_internal_status(
     // Log the status request
     crate::logger::log_info(format!(
         "{} Internal status request: {}",
-        "🔍".bright_magenta(),
+        "🔍",
         if is_active {
-            "ACTIVE".bright_green()
+            "ACTIVE"
         } else {
-            "INACTIVE".bright_red()
+            "INACTIVE"
         }
     ));
 
@@ -367,12 +362,12 @@ pub async fn start_http_server(
 
     crate::logger::log_info(format!(
         "{} HTTP proxy server listening on {}",
-        "🌐".bright_green(),
-        format!("http://localhost:{}", local_port).bright_blue()
+        "🌐",
+        format!("http://localhost:{}", local_port)
     ));
     crate::logger::log_info(format!(
         "{} Verbosity level set to {}",
-        "🔍".bright_yellow(),
+        "🔍",
         verbose
     ));
 
