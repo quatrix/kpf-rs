@@ -14,7 +14,6 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 use ratatui::text::Span;
-use ratatui::text::Spans;
 use ratatui::widgets::Wrap;
 use textwrap::{self, Options};
 
