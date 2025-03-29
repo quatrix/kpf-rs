@@ -6,9 +6,11 @@ use crossterm::{
 };
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Paragraph, Wrap, Scrollbar, ScrollbarOrientation, ScrollbarState, Clear},
+    text::{Line, Span},
+    widgets::{
+        Block, Borders, Clear, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap,
+    },
     Frame,
-    text::{Span, Line},
 };
 use std::io;
 use std::sync::mpsc;
@@ -56,7 +58,7 @@ impl App {
     pub fn on_tick(&mut self) {
         // Process any new log messages
         let mut received_logs = false;
-        
+
         // Try to receive all pending log messages
         while let Ok(log) = self.log_receiver.try_recv() {
             self.logs.push(log);
@@ -145,7 +147,11 @@ pub fn run_app(
 
     loop {
         let size = terminal.size()?;
-        let available_height = if size.height > 2 { size.height - 2 } else { size.height } as usize;
+        let available_height = if size.height > 2 {
+            size.height - 2
+        } else {
+            size.height
+        } as usize;
         let max_scroll = if app.logs.len() > available_height {
             app.logs.len() - available_height
         } else {
@@ -170,7 +176,10 @@ pub fn run_app(
                         }
                         _ => {
                             app.awaiting_verbosity_input = false;
-                            crate::logger::log_warning("Invalid verbosity key pressed, cancelling verbosity change".to_string());
+                            crate::logger::log_warning(
+                                "Invalid verbosity key pressed, cancelling verbosity change"
+                                    .to_string(),
+                            );
                         }
                     }
                 } else {
@@ -237,7 +246,11 @@ fn ui(f: &mut Frame, app: &mut App) {
 fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect) {
     f.render_widget(Clear, area);
     // Build log lines with timestamp prefixes and colored messages, wrapping long messages into multiple lines
-    let inner_width = if area.width > 2 { area.width - 2 } else { area.width } as usize;
+    let inner_width = if area.width > 2 {
+        area.width - 2
+    } else {
+        area.width
+    } as usize;
     let mut log_lines: Vec<Line> = Vec::new();
     for log in &app.logs {
         let time = log.timestamp.format("%H:%M:%S").to_string();
@@ -251,15 +264,16 @@ fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect) {
         };
         let lines: Vec<&str> = log.message.split('\n').collect();
         if lines.is_empty() || (lines.len() == 1 && lines[0].is_empty()) {
-            log_lines.push(Line::from(vec![
-                Span::styled(prefix.clone(), Style::default().fg(Color::DarkGray)),
-            ]));
+            log_lines.push(Line::from(vec![Span::styled(
+                prefix.clone(),
+                Style::default().fg(Color::DarkGray),
+            )]));
         } else {
             log_lines.push(Line::from(vec![
                 Span::styled(prefix.clone(), Style::default().fg(Color::DarkGray)),
                 Span::styled(lines[0].to_string(), Style::default().fg(color)),
             ]));
-            let indent = " ".repeat(prefix_width);
+            let indent = "⠀".repeat(prefix_width);
             for line in lines.iter().skip(1) {
                 log_lines.push(Line::from(vec![
                     Span::raw(indent.clone()),
@@ -270,14 +284,22 @@ fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect) {
     }
 
     let total_lines = log_lines.len();
-    let available_height = if area.height > 2 { area.height - 2 } else { area.height } as usize;
+    let available_height = if area.height > 2 {
+        area.height - 2
+    } else {
+        area.height
+    } as usize;
     let max_scroll = total_lines.saturating_sub(available_height);
     if app.scroll > max_scroll {
         app.scroll = max_scroll;
     }
 
     let block = Block::default()
-        .title(if app.auto_scroll { "Logs (Auto Scroll)" } else { "Logs (Manual Scroll)" })
+        .title(if app.auto_scroll {
+            "Logs (Auto Scroll)"
+        } else {
+            "Logs (Manual Scroll)"
+        })
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Cyan));
 
@@ -338,4 +360,3 @@ pub fn spawn_log_collector(_log_sender: mpsc::Sender<LogEntry>) -> thread::JoinH
         }
     })
 }
-
