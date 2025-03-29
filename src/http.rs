@@ -39,13 +39,13 @@ async fn proxy_request(
         *response.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
         
         if verbose >= 1 {
-            println!("{} {} {} → {} ({})", 
+            crate::logger::log_error(format!("{} {} {} → {} ({})", 
                 "✗".bright_red(),
                 method.as_str(),
                 path,
                 "503 Service Unavailable".bright_red(),
                 format!("{}ms", start.elapsed().as_millis()).bright_yellow()
-            );
+            ));
         }
         
         return Ok(response);
@@ -172,6 +172,8 @@ async fn proxy_request(
                 };
                 if let Ok(mut file) = OpenOptions::new().append(true).create(true).open(log_path) {
                     let _ = file.write_all(log_line.as_bytes());
+                } else {
+                    crate::logger::log_error(format!("Failed to write to log file: {}", log_path.display()));
                 }
             }
             if verbose >= 2 && req_body_for_logging.is_some() && method != hyper::Method::GET {
@@ -202,6 +204,8 @@ async fn proxy_request(
                 };
                 if let Ok(mut file) = OpenOptions::new().append(true).create(true).open(log_path) {
                     let _ = file.write_all(log_line.as_bytes());
+                } else {
+                    crate::logger::log_error(format!("Failed to write to log file: {}", log_path.display()));
                 }
             }
             if verbose >= 1 {

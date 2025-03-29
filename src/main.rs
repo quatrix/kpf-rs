@@ -241,7 +241,8 @@ async fn run_tui_mode(args: Args) -> Result<()> {
     
     // Handle any errors from the app
     if let Err(err) = res {
-        println!("Error: {}", err);
+        eprintln!("Error: {}", err);
+        logger::log_error(format!("TUI error: {}", err));
     }
     
     Ok(())

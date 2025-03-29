@@ -57,7 +57,10 @@ pub async fn create_port_forward(
     child_handle: std::sync::Arc<tokio::sync::Mutex<Option<tokio::process::Child>>>,
 ) -> Result<impl futures::Future<Output = Result<()>>> {
     // Validate that the resource exists
-    validate_resource(resource_type, resource_name, namespace).await?;
+    if let Err(e) = validate_resource(resource_type, resource_name, namespace).await {
+        crate::logger::log_error(format!("Resource validation failed: {}", e));
+        return Err(e);
+    }
     
     // Use kubectl port-forward command
     let mut cmd = Command::new("kubectl");
