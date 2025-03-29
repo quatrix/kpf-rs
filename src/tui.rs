@@ -6,7 +6,7 @@ use crossterm::{
 };
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, Borders, Paragraph},
     Frame,
 };
 use std::io;
@@ -236,9 +236,10 @@ fn ui(f: &mut Frame, app: &App) {
         let prefix_width = timestamp_prefix.chars().count();
         
         // Wrap the message text
+        let indent = " ".repeat(prefix_width);
         let wrap_options = Options::new(inner_width)
             .initial_indent("")
-            .subsequent_indent(&" ".repeat(prefix_width));
+            .subsequent_indent(&indent);
         
         let wrapped_message = textwrap::wrap(&log.message, wrap_options);
         
