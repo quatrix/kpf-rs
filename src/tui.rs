@@ -417,8 +417,6 @@ fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect, _viewport_height:
         area.width - 2
     } else {
         area.width
-    } else {
-        0
     } as usize;
 
     let mut log_lines: Vec<Line> = Vec::new();
