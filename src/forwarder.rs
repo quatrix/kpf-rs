@@ -3,7 +3,6 @@ use crate::config::Config;
 use crate::http::start_http_server;
 use crate::k8s::{create_port_forward, parse_resource};
 use anyhow::{Context, Result};
-use colored::*;
 use futures::future::join_all;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -46,7 +45,7 @@ pub async fn start_single(
 
     // Find an available port for the internal port-forward
     let internal_port = find_available_port()?;
-    crate::logger::log_info(format!("{} Using internal port {} for port-forward", "🔌".bright_cyan(), internal_port));
+    crate::logger::log_info(format!("{} Using internal port {} for port-forward", "🔌", internal_port));
 
     // Start HTTP server on the user-specified port
     let resource_prefix = format!("{}/{}:{}", resource_type, resource_name, resource_port);
@@ -71,7 +70,7 @@ pub async fn start_single(
                         let mut status = port_forward_status.lock().unwrap();
                         *status = true;
                         crate::logger::log_info(format!("{} Port-forward status set to ACTIVE (PID: {})", 
-                            "🔄".bright_cyan(), 
+                            "🔄", 
                             std::process::id()));
                     }
                     
@@ -83,16 +82,16 @@ pub async fn start_single(
                     );
                     
                     crate::logger::log_info(format!("{} HTTP proxy listening on port {} and forwarding to internal port {}", 
-                        "🔄".bright_blue(), 
-                        local_port.to_string().bright_green(),
-                        internal_port.to_string().bright_yellow()));
+                        "🔄", 
+                        local_port.to_string(),
+                        internal_port.to_string()));
                     
-                    crate::logger::log_info(format!("{} Port-forward active, waiting for connection to establish...", "🔄".bright_cyan()));
+                    crate::logger::log_info(format!("{} Port-forward active, waiting for connection to establish...", "🔄"));
                     
                     // Add a small delay to ensure the port-forward is fully established
                     sleep(Duration::from_millis(500)).await;
                     
-                    crate::logger::log_success(format!("{} Port-forward ready to accept connections", "✅".bright_green()));
+                    crate::logger::log_success(format!("{} Port-forward ready to accept connections", "✅"));
                     
                     let pf_future = pf;
                     let result = if let Some(probe_path) = liveness_probe.clone() {
@@ -132,7 +131,7 @@ pub async fn start_single(
                         let mut status = port_forward_status.lock().unwrap();
                         *status = false;
                         crate::logger::log_warning(format!("{} Port-forward status set to INACTIVE (PID: {})", 
-                            "🔄".bright_red(), 
+                            "🔄", 
                             std::process::id()));
                     }
                     
