@@ -208,13 +208,15 @@ async fn proxy_request(
                     req_body_for_logging.unwrap()
                 ));
             }
-            // Always log response body if available
-            if let Some(resp_body_str) = opt_resp_body {
-                crate::logger::log_info(format!(
-                    "{} Response body:\n{}",
-                    "📄",
-                    resp_body_str
-                ));
+            // Log the JSON payload if verbose level is 3 and a JSON payload is available
+            if verbose >= 3 {
+                if let Some(resp_body_str) = opt_resp_body {
+                    crate::logger::log_info(format!(
+                        "{} Response payload:\n{}",
+                        "📄",
+                        resp_body_str
+                    ));
+                }
             }
             Ok(response)
         }
