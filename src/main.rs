@@ -2,8 +2,6 @@ use anyhow::Result;
 use clap::Parser;
 use colored::*;
 use std::path::PathBuf;
-use std::sync::mpsc;
-use std::thread;
 use std::time::Duration;
 
 mod cli;
@@ -14,7 +12,7 @@ mod k8s;
 mod logger;
 mod tui;
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(
     name = "k8s-port-forward",
     about = "Kubernetes port-forwarding with improved ergonomics",
@@ -126,6 +124,9 @@ async fn run_tui_mode(args: Args) -> Result<()> {
     
     // Create a channel for logging
     let (log_sender, log_receiver) = tui::create_log_channel();
+    
+    // Set the log sender in the logger module
+    logger::set_log_sender(log_sender.clone());
     
     // Create the app state
     let mut app = tui::App::new(log_receiver);

@@ -162,7 +162,7 @@ pub fn create_log_channel() -> (mpsc::Sender<LogEntry>, mpsc::Receiver<LogEntry>
     mpsc::channel()
 }
 
-pub fn spawn_log_collector(log_sender: mpsc::Sender<LogEntry>) -> thread::JoinHandle<()> {
+pub fn spawn_log_collector(_log_sender: mpsc::Sender<LogEntry>) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         // This thread will run until the program exits
         loop {
