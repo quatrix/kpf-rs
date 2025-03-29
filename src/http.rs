@@ -37,15 +37,14 @@ async fn proxy_request(
         let mut response = Response::new(Body::from("Service Unavailable: Port-forward is not active"));
         *response.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
         
-        if verbose >= 1 {
-            crate::logger::log_error(format!("{} {} {} → {} ({})", 
-                "✗".bright_red(),
-                method.as_str(),
-                path,
-                "503 Service Unavailable".bright_red(),
-                format!("{}ms", start.elapsed().as_millis()).bright_yellow()
-            ));
-        }
+        // Always log error responses regardless of verbosity level
+        crate::logger::log_error(format!("{} {} {} → {} ({})", 
+            "✗".bright_red(),
+            method.as_str(),
+            path,
+            "503 Service Unavailable".bright_red(),
+            format!("{}ms", start.elapsed().as_millis()).bright_yellow()
+        ));
         
         return Ok(response);
     }
@@ -102,36 +101,35 @@ async fn proxy_request(
         Ok(response) => {
             let status = response.status();
             let elapsed = start.elapsed();
-            if verbose >= 1 {
-                let colored_method = match method {
-                    hyper::Method::GET => "GET".bright_blue(),
-                    hyper::Method::POST => "POST".bright_magenta(),
-                    hyper::Method::PUT => "PUT".bright_yellow(),
-                    hyper::Method::DELETE => "DELETE".bright_red(),
-                    _ => method.as_str().normal(),
-                };
-                let status_colored = match status.as_u16() {
-                    200..=299 => status.as_str().bright_green(),
-                    300..=399 => status.as_str().bright_cyan(),
-                    400..=499 => status.as_str().bright_yellow(),
-                    _ => status.as_str().bright_red(),
-                };
-                let ms = elapsed.as_millis();
-                let duration_colored = match ms {
-                    0..=100 => format!("{}ms", ms).bright_green(),
-                    101..=300 => format!("{}ms", ms).bright_yellow(),
-                    _ => format!("{}ms", ms).bright_red(),
-                };
-                // Always log to the TUI logger
-                crate::logger::log_success(format!("{} {} - {} {} → {} ({})",
-                    "✓".bright_green(),
-                    resource,
-                    colored_method,
-                    path,
-                    status_colored,
-                    duration_colored
-                ));
-            }
+            // Always log successful requests regardless of verbosity level
+            let colored_method = match method {
+                hyper::Method::GET => "GET".bright_blue(),
+                hyper::Method::POST => "POST".bright_magenta(),
+                hyper::Method::PUT => "PUT".bright_yellow(),
+                hyper::Method::DELETE => "DELETE".bright_red(),
+                _ => method.as_str().normal(),
+            };
+            let status_colored = match status.as_u16() {
+                200..=299 => status.as_str().bright_green(),
+                300..=399 => status.as_str().bright_cyan(),
+                400..=499 => status.as_str().bright_yellow(),
+                _ => status.as_str().bright_red(),
+            };
+            let ms = elapsed.as_millis();
+            let duration_colored = match ms {
+                0..=100 => format!("{}ms", ms).bright_green(),
+                101..=300 => format!("{}ms", ms).bright_yellow(),
+                _ => format!("{}ms", ms).bright_red(),
+            };
+            // Always log to the TUI logger
+            crate::logger::log_success(format!("{} {} - {} {} → {} ({})",
+                "✓".bright_green(),
+                resource,
+                colored_method,
+                path,
+                status_colored,
+                duration_colored
+            ));
             let (response, opt_resp_body) = if verbose >= 3 || (requests_log_file.is_some() && requests_log_verbosity >= 3) {
                 let (parts, body) = response.into_parts();
                 let bytes = hyper::body::to_bytes(body).await.unwrap_or_default();
@@ -208,24 +206,23 @@ async fn proxy_request(
                     crate::logger::log_error(format!("Failed to write to log file: {}", log_path.display()));
                 }
             }
-            if verbose >= 1 {
-                let colored_method = match method {
-                    hyper::Method::GET => "GET".bright_blue(),
-                    hyper::Method::POST => "POST".bright_magenta(),
-                    hyper::Method::PUT => "PUT".bright_yellow(),
-                    hyper::Method::DELETE => "DELETE".bright_red(),
-                    _ => method.as_str().normal(),
-                };
-                // Always log to the TUI logger
-                crate::logger::log_error(format!("{} {} - {} {} → {} ({})", 
-                    "✗".bright_red(),
-                    resource,
-                    colored_method,
-                    path,
-                    "502 Bad Gateway".bright_red(),
-                    format!("{}ms", start.elapsed().as_millis()).bright_yellow()
-                ));
-            }
+            // Always log error responses regardless of verbosity level
+            let colored_method = match method {
+                hyper::Method::GET => "GET".bright_blue(),
+                hyper::Method::POST => "POST".bright_magenta(),
+                hyper::Method::PUT => "PUT".bright_yellow(),
+                hyper::Method::DELETE => "DELETE".bright_red(),
+                _ => method.as_str().normal(),
+            };
+            // Always log to the TUI logger
+            crate::logger::log_error(format!("{} {} - {} {} → {} ({})", 
+                "✗".bright_red(),
+                resource,
+                colored_method,
+                path,
+                "502 Bad Gateway".bright_red(),
+                format!("{}ms", start.elapsed().as_millis()).bright_yellow()
+            ));
             
             Ok(response)
         }
