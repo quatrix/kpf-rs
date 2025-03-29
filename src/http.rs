@@ -40,11 +40,11 @@ async fn proxy_request(
         // Always log error responses regardless of verbosity level
         crate::logger::log_error(format!(
             "{} {} {} → {} ({})",
-            "✗".bright_red(),
+            "✗",
             method.as_str(),
             path,
-            "503 Service Unavailable".bright_red(),
-            format!("{}ms", start.elapsed().as_millis()).bright_yellow()
+            "503 Service Unavailable",
+            format!("{}ms", start.elapsed().as_millis())
         ));
 
         return Ok(response);
