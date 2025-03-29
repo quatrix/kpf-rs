@@ -274,7 +274,7 @@ fn ui(f: &mut Frame, app: &App) {
     };
 
     // Create a paragraph with the logs and apply scrolling
-    let logs = Paragraph::new(wrapped_lines)
+    let logs = Paragraph::new(wrapped_lines.clone())
         .block(logs_block)
         .scroll((scroll_offset as u16, 0));
 
