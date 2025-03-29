@@ -64,48 +64,6 @@ async fn main() -> Result<()> {
     run_tui_mode(args).await
 }
 
-async fn run_cli_mode(args: Args) -> Result<()> {
-    // Print startup banner
-    cli::print_startup_banner();
-    
-    logger::log_info(format!("{} Kubernetes port-forward utility", "🚀"));
-    logger::log_info(format!("{} Verbosity level: {}", "🔊", args.verbose));
-    
-    if let Some(config_path) = args.config {
-        // Load config file and start multiple port-forwards
-        let mut config = config::load_config(config_path)?;
-        config.verbose = Some(args.verbose);
-        forwarder::start_from_config(config, args.show_liveness, args.requests_log_file, args.requests_log_verbosity).await?;
-    } else if let Some(resource_str) = args.resource {
-        // Parse resource string and start single port-forward
-        let (resource_type, resource_name, resource_port) = k8s::parse_resource(&resource_str)?;
-        let local_port = args.local_port.unwrap_or(resource_port);
-        
-        logger::log_info(format!("{} Forwarding {} {}/{} port {} via HTTP proxy on port {}",
-            "📡",
-            resource_type,
-            resource_name,
-            resource_port.to_string(),
-            resource_port.to_string(),
-            local_port.to_string()));
-        
-        forwarder::start_single(
-            resource_type,
-            resource_name,
-            resource_port,
-            args.namespace,
-            local_port,
-            args.verbose,
-            args.timeout,
-            args.liveness_probe,
-            args.show_liveness,
-            args.requests_log_file,
-            args.requests_log_verbosity,
-        ).await?;
-    }
-    
-    Ok(())
-}
 
 async fn run_tui_mode(args: Args) -> Result<()> {
     // Set up the terminal
