@@ -281,7 +281,7 @@ fn render_status_panel(f: &mut Frame, app: &mut App, area: Rect) {
             let status_str = if st.active {
                 "ACTIVE"
             } else if st.last_probe.is_none() {
-                "INITIALIZING"
+                "OPEN"
             } else {
                 "INACTIVE"
             };

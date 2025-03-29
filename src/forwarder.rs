@@ -103,7 +103,7 @@ pub async fn start_single(
                             statuses.insert(format!("{}/{}", resource_type, resource_name), ForwardStatus {
                                 resource: format!("{}/{}", resource_type, resource_name),
                                 local_port,
-                                active: true,
+                                active: false,
                                 last_probe: None,
                             });
                         }
@@ -139,6 +139,7 @@ pub async fn start_single(
                                             let key = format!("{}/{}", resource_type, resource_name);
                                             statuses.entry(key).and_modify(|entry| {
                                                 entry.last_probe = Some(chrono::Utc::now().to_rfc3339());
+                                                entry.active = true;
                                             });
                                         }
                                         break;
