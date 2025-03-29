@@ -214,112 +214,92 @@ pub fn run_app(
 fn ui(f: &mut Frame, app: &App) {
     let size = f.size();
 
-    // Create a block for the logs area
-    let title = if app.auto_scroll {
-        " Logs (Auto-Scroll: ON) "
-    } else {
-        " Logs (Auto-Scroll: OFF) "
-    };
+    // Define inner area dimensions (accounting for borders)
+    let inner_height = if size.height > 2 { size.height - 2 } else { size.height } as usize;
+    let inner_width = if size.width > 2 { size.width - 2 } else { size.width } as usize;
 
+    // Create a header with auto/manual scroll status
+    let title = if app.auto_scroll {
+        " Logs (Auto Scroll) "
+    } else {
+        " Logs (Manual Scroll) "
+    };
     let logs_block = Block::default()
         .title(title)
-        .title_alignment(Alignment::Left)
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(Style::default().fg(Color::Cyan))
+        .title_alignment(Alignment::Left);
 
-    // Calculate visible area
-    let inner_height = size.height.saturating_sub(2) as usize; // -2 for borders
-    let inner_width = size.width.saturating_sub(2) as usize; // -2 for borders
-
-    // Process logs with textwrap
-    let mut wrapped_lines: Vec<Line> = Vec::new();
-    
+    // Wrap log messages and build display lines
+    let mut wrapped_lines = Vec::new();
     for log in &app.logs {
-        let timestamp = log.timestamp.format("%H:%M:%S").to_string();
+        let ts = log.timestamp.format("%H:%M:%S").to_string();
+        let prefix = format!("[{}] ", ts);
+        let prefix_width = prefix.chars().count();
+        let indent = " ".repeat(prefix_width);
+        let wrap_options = Options::new(inner_width)
+            .initial_indent("")
+            .subsequent_indent(&indent);
+        let wrapped = textwrap::wrap(&log.message, wrap_options);
         let color = match log.level {
             LogLevel::Info => Color::Cyan,
             LogLevel::Success => Color::Green,
             LogLevel::Warning => Color::Yellow,
             LogLevel::Error => Color::Red,
         };
-        
-        // Create the timestamp prefix
-        let timestamp_prefix = format!("[{}] ", timestamp);
-        let prefix_width = timestamp_prefix.chars().count();
-        
-        // Wrap the message text
-        let indent = " ".repeat(prefix_width);
-        let wrap_options = Options::new(inner_width)
-            .initial_indent("")
-            .subsequent_indent(&indent);
-        
-        let wrapped_message = textwrap::wrap(&log.message, wrap_options);
-        
-        // Create the first line with timestamp
-        if !wrapped_message.is_empty() {
+        if !wrapped.is_empty() {
             wrapped_lines.push(Line::from(vec![
-                Span::styled(timestamp_prefix, Style::default().fg(Color::DarkGray)),
-                Span::styled(wrapped_message[0].clone(), Style::default().fg(color)),
+                Span::styled(prefix.clone(), Style::default().fg(Color::DarkGray)),
+                Span::styled(wrapped[0].clone(), Style::default().fg(color)),
             ]));
-            
-            // Add continuation lines if any
-            for line in wrapped_message.iter().skip(1) {
+            for line in wrapped.iter().skip(1) {
                 wrapped_lines.push(Line::from(vec![
                     Span::styled(" ".repeat(prefix_width), Style::default()),
                     Span::styled(line.clone(), Style::default().fg(color)),
                 ]));
             }
         } else {
-            // Handle empty messages
             wrapped_lines.push(Line::from(vec![
-                Span::styled(timestamp_prefix, Style::default().fg(Color::DarkGray)),
+                Span::styled(prefix, Style::default().fg(Color::DarkGray)),
             ]));
         }
     }
 
-    // Calculate scroll position
-    let scroll_offset = if wrapped_lines.len() > inner_height {
-        let max_scroll = wrapped_lines.len().saturating_sub(inner_height);
-        app.scroll.min(max_scroll)
+    // Determine scroll offset based on auto-scroll or manual control
+    let total_lines = wrapped_lines.len();
+    let max_scroll = if total_lines > inner_height { total_lines - inner_height } else { 0 };
+    let scroll_offset = if app.auto_scroll {
+        max_scroll
     } else {
-        0
+        app.scroll.min(max_scroll)
     };
 
-    // Create a paragraph as a pager by slicing the wrapped lines
+    // Slice the wrapped lines to get visible portion
     let visible_lines: Vec<Line> = wrapped_lines
         .iter()
         .skip(scroll_offset)
         .take(inner_height)
         .cloned()
         .collect();
-    let logs = Paragraph::new(visible_lines)
+
+    // Create and render the Paragraph widget
+    let paragraph = Paragraph::new(visible_lines)
         .block(logs_block);
+    f.render_widget(paragraph, size);
 
-    // Render the logs
-    f.render_widget(logs, size);
-
-    // If we have wrapped lines and are not in auto-scroll mode, show a scroll indicator
-    if !wrapped_lines.is_empty() && !app.auto_scroll {
-        let scroll_percent = if wrapped_lines.len() <= inner_height {
-            100
-        } else {
-            (scroll_offset * 100) / (wrapped_lines.len() - inner_height)
-        };
-
-        let scroll_indicator = format!(" {}% ", scroll_percent);
-        let scroll_indicator_width = scroll_indicator.len() as u16;
-
-        let scroll_indicator_layout = Rect {
-            x: size.x + size.width - scroll_indicator_width - 1,
+    // Display scroll indicator if in manual scroll mode
+    if !app.auto_scroll && total_lines > inner_height {
+        let percent = if max_scroll > 0 { (scroll_offset * 100) / max_scroll } else { 100 };
+        let indicator = format!(" {}% ", percent);
+        let ind_rect = Rect {
+            x: size.x + size.width - indicator.len() as u16 - 1,
             y: size.y,
-            width: scroll_indicator_width,
+            width: indicator.len() as u16,
             height: 1,
         };
-
-        let scroll_indicator_paragraph = Paragraph::new(scroll_indicator)
+        let ind_paragraph = Paragraph::new(indicator)
             .style(Style::default().bg(Color::Cyan).fg(Color::Black));
-
-        f.render_widget(scroll_indicator_paragraph, scroll_indicator_layout);
+        f.render_widget(ind_paragraph, ind_rect);
     }
 }
 
