@@ -216,21 +216,38 @@ fn ui(f: &mut Frame, app: &App) {
 }
 
 fn render_logs_panel(f: &mut Frame, app: &App, area: Rect) {
-    // Build log lines with timestamp prefixes and colored messages
-    let log_lines: Vec<Line> = app.logs.iter().map(|log| {
+    // Build log lines with timestamp prefixes and colored messages, wrapping long messages into multiple lines
+    let inner_width = if area.width > 2 { area.width - 2 } else { area.width } as usize;
+    let mut log_lines: Vec<Line> = Vec::new();
+    for log in &app.logs {
         let time = log.timestamp.format("%H:%M:%S").to_string();
         let prefix = format!("[{}] ", time);
+        let prefix_width = prefix.chars().count();
         let color = match log.level {
             LogLevel::Info => Color::Cyan,
             LogLevel::Success => Color::Green,
             LogLevel::Warning => Color::Yellow,
             LogLevel::Error => Color::Red,
         };
-        Line::from(vec![
-            Span::styled(prefix, Style::default().fg(Color::DarkGray)),
-            Span::styled(&log.message, Style::default().fg(color)),
-        ])
-    }).collect();
+        let wrapped = textwrap::wrap(&log.message, inner_width.saturating_sub(prefix_width));
+        if wrapped.is_empty() {
+            log_lines.push(Line::from(vec![
+                Span::styled(prefix.clone(), Style::default().fg(Color::DarkGray))
+            ]));
+        } else {
+            log_lines.push(Line::from(vec![
+                Span::styled(prefix.clone(), Style::default().fg(Color::DarkGray)),
+                Span::styled(wrapped[0].to_string(), Style::default().fg(color)),
+            ]));
+            let indent = " ".repeat(prefix_width);
+            for line in wrapped.iter().skip(1) {
+                log_lines.push(Line::from(vec![
+                    Span::raw(indent.clone()),
+                    Span::styled(line.to_string(), Style::default().fg(color)),
+                ]));
+            }
+        }
+    }
 
     // Determine available height and compute scroll offset
     let available_height = if area.height > 2 { area.height - 2 } else { area.height } as usize;
