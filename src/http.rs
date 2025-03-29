@@ -39,15 +39,17 @@ async fn proxy_request(
         ));
         *response.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
 
-        // Always log error responses regardless of verbosity level
-        crate::logger::log_error(format!(
-            "{} {} {} → {} ({})",
-            "✗",
-            method.as_str(),
-            path,
-            "503 Service Unavailable",
-            format!("{}ms", start.elapsed().as_millis())
-        ));
+        // If verbose > 0, log error response for inactive port-forward
+        if verbose > 0 {
+            crate::logger::log_error(format!(
+                "{} {} {} → {} ({})",
+                "✗",
+                method.as_str(),
+                path,
+                "503 Service Unavailable",
+                format!("{}ms", start.elapsed().as_millis())
+            ));
+        }
 
         return Ok(response);
     }
@@ -122,10 +124,12 @@ async fn proxy_request(
             let duration_colored = format!("{}ms", ms);
 
             // Always log to the TUI logger
-            crate::logger::log_success(format!(
-                "{} {} - {} {} → {} ({})",
-                "✓", resource, colored_method, path, status_colored, duration_colored
-            ));
+            if verbose > 0 {
+                crate::logger::log_success(format!(
+                    "{} {} - {} {} → {} ({})",
+                    "✓", resource, colored_method, path, status_colored, duration_colored
+                ));
+            }
             let (response, opt_resp_body) = if verbose >= 3
                 || (requests_log_file.is_some() && requests_log_verbosity >= 3)
             {
@@ -198,7 +202,7 @@ async fn proxy_request(
                 }
             }
             // Log request body if available and not a GET request
-            if req_body_for_logging.is_some() && method != hyper::Method::GET {
+            if verbose > 0 && req_body_for_logging.is_some() && method != hyper::Method::GET {
                 crate::logger::log_info(format!(
                     "{} Request body:\n{}",
                     "📄",
@@ -266,15 +270,17 @@ async fn proxy_request(
                 _ => method.as_str(),
             };
             // Always log to the TUI logger
-            crate::logger::log_error(format!(
-                "{} {} - {} {} → {} ({})",
-                "✗",
-                resource,
-                colored_method,
-                path,
-                "502 Bad Gateway",
-                format!("{}ms", start.elapsed().as_millis())
-            ));
+            if verbose > 0 {
+                crate::logger::log_error(format!(
+                    "{} {} - {} {} → {} ({})",
+                    "✗",
+                    resource,
+                    colored_method,
+                    path,
+                    "502 Bad Gateway",
+                    format!("{}ms", start.elapsed().as_millis())
+                ));
+            }
 
             Ok(response)
         }
