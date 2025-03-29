@@ -139,9 +139,15 @@ pub fn run_app(
     let mut last_tick = Instant::now();
 
     loop {
-        // We'll calculate the max scroll position inside the UI rendering function
-        // since it depends on the wrapped lines which are calculated there
-        let max_scroll = usize::MAX / 2; // Using a large value that will be capped
+        let size = terminal.size()?;
+        let inner_width = size.width.saturating_sub(2) as usize;
+        let inner_height = size.height.saturating_sub(2) as usize;
+        let wrapped_lines = get_wrapped_lines(app, inner_width);
+        let max_scroll = if wrapped_lines.len() > inner_height {
+            wrapped_lines.len().saturating_sub(inner_height)
+        } else {
+            0
+        };
 
         terminal.draw(|f| ui(f, app))?;
 
@@ -344,4 +350,41 @@ pub fn spawn_log_collector(_log_sender: mpsc::Sender<LogEntry>) -> thread::JoinH
             thread::sleep(Duration::from_millis(100));
         }
     })
+}
+
+fn get_wrapped_lines(app: &App, inner_width: usize) -> Vec<Line> {
+    let mut wrapped_lines = Vec::new();
+    for log in &app.logs {
+        let timestamp = log.timestamp.format("%H:%M:%S").to_string();
+        let timestamp_prefix = format!("[{}] ", timestamp);
+        let prefix_width = timestamp_prefix.chars().count();
+        let indent = " ".repeat(prefix_width);
+        let wrap_options = Options::new(inner_width)
+            .initial_indent("")
+            .subsequent_indent(&indent);
+        let wrapped_message = textwrap::wrap(&log.message, wrap_options);
+        let color = match log.level {
+            LogLevel::Info => Color::Cyan,
+            LogLevel::Success => Color::Green,
+            LogLevel::Warning => Color::Yellow,
+            LogLevel::Error => Color::Red,
+        };
+        if !wrapped_message.is_empty() {
+            wrapped_lines.push(Line::from(vec![
+                Span::styled(timestamp_prefix.clone(), Style::default().fg(Color::DarkGray)),
+                Span::styled(wrapped_message[0].clone(), Style::default().fg(color)),
+            ]));
+            for line in wrapped_message.iter().skip(1) {
+                wrapped_lines.push(Line::from(vec![
+                    Span::styled(" ".repeat(prefix_width), Style::default()),
+                    Span::styled(line.clone(), Style::default().fg(color)),
+                ]));
+            }
+        } else {
+            wrapped_lines.push(Line::from(vec![
+                Span::styled(timestamp_prefix.clone(), Style::default().fg(Color::DarkGray)),
+            ]));
+        }
+    }
+    wrapped_lines
 }
