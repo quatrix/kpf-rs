@@ -122,6 +122,7 @@ async fn proxy_request(
                     101..=300 => format!("{}ms", ms).bright_yellow(),
                     _ => format!("{}ms", ms).bright_red(),
                 };
+                // Always log to the TUI logger
                 crate::logger::log_success(format!("{} {} - {} {} → {} ({})",
                     "✓".bright_green(),
                     resource,
@@ -175,13 +176,13 @@ async fn proxy_request(
                     crate::logger::log_error(format!("Failed to write to log file: {}", log_path.display()));
                 }
             }
-            if verbose >= 2 && req_body_for_logging.is_some() && method != hyper::Method::GET {
+            // Log request body if available and not a GET request
+            if req_body_for_logging.is_some() && method != hyper::Method::GET {
                 crate::logger::log_info(format!("{} Request body:\n{}", "📄".bright_blue(), req_body_for_logging.unwrap()));
             }
-            if verbose >= 3 {
-                if let Some(resp_body_str) = opt_resp_body {
-                    crate::logger::log_info(format!("{} Response body:\n{}", "📄".bright_green(), resp_body_str));
-                }
+            // Always log response body if available
+            if let Some(resp_body_str) = opt_resp_body {
+                crate::logger::log_info(format!("{} Response body:\n{}", "📄".bright_green(), resp_body_str));
             }
             Ok(response)
         }
@@ -215,6 +216,7 @@ async fn proxy_request(
                     hyper::Method::DELETE => "DELETE".bright_red(),
                     _ => method.as_str().normal(),
                 };
+                // Always log to the TUI logger
                 crate::logger::log_error(format!("{} {} - {} {} → {} ({})", 
                     "✗".bright_red(),
                     resource,
