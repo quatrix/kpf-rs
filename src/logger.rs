@@ -39,11 +39,14 @@ pub fn set_log_sender(sender: mpsc::Sender<crate::tui::LogEntry>) {
 pub fn log_info(message: String) {
     unsafe {
         if let Some(sender) = &LOG_SENDER {
-            let _ = sender.send(crate::tui::LogEntry {
+            match sender.send(crate::tui::LogEntry {
                 timestamp: chrono::Utc::now(),
-                message,
+                message: message.clone(),
                 level: crate::tui::LogLevel::Info,
-            });
+            }) {
+                Ok(_) => {},
+                Err(e) => eprintln!("Failed to send log to TUI: {}", e),
+            }
         } else {
             println!("{} {}", "ℹ️".bright_cyan(), message);
         }
@@ -53,11 +56,14 @@ pub fn log_info(message: String) {
 pub fn log_success(message: String) {
     unsafe {
         if let Some(sender) = &LOG_SENDER {
-            let _ = sender.send(crate::tui::LogEntry {
+            match sender.send(crate::tui::LogEntry {
                 timestamp: chrono::Utc::now(),
-                message,
+                message: message.clone(),
                 level: crate::tui::LogLevel::Success,
-            });
+            }) {
+                Ok(_) => {},
+                Err(e) => eprintln!("Failed to send log to TUI: {}", e),
+            }
         } else {
             println!("{} {}", "✅".bright_green(), message);
         }
@@ -67,11 +73,14 @@ pub fn log_success(message: String) {
 pub fn log_warning(message: String) {
     unsafe {
         if let Some(sender) = &LOG_SENDER {
-            let _ = sender.send(crate::tui::LogEntry {
+            match sender.send(crate::tui::LogEntry {
                 timestamp: chrono::Utc::now(),
-                message,
+                message: message.clone(),
                 level: crate::tui::LogLevel::Warning,
-            });
+            }) {
+                Ok(_) => {},
+                Err(e) => eprintln!("Failed to send log to TUI: {}", e),
+            }
         } else {
             println!("{} {}", "⚠️".bright_yellow(), message);
         }
@@ -81,11 +90,14 @@ pub fn log_warning(message: String) {
 pub fn log_error(message: String) {
     unsafe {
         if let Some(sender) = &LOG_SENDER {
-            let _ = sender.send(crate::tui::LogEntry {
+            match sender.send(crate::tui::LogEntry {
                 timestamp: chrono::Utc::now(),
-                message,
+                message: message.clone(),
                 level: crate::tui::LogLevel::Error,
-            });
+            }) {
+                Ok(_) => {},
+                Err(e) => eprintln!("Failed to send log to TUI: {}", e),
+            }
         } else {
             eprintln!("{} {}", "❌".bright_red(), message);
         }

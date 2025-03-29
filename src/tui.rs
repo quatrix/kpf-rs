@@ -49,13 +49,16 @@ impl App {
 
     pub fn on_tick(&mut self) {
         // Process any new log messages
-        let had_new_logs = self.log_receiver.try_recv().is_ok();
+        let mut received_logs = false;
+        
+        // Try to receive all pending log messages
         while let Ok(log) = self.log_receiver.try_recv() {
             self.logs.push(log);
+            received_logs = true;
         }
 
         // Auto-scroll to bottom if enabled and we received new logs
-        if had_new_logs && self.auto_scroll {
+        if received_logs && self.auto_scroll {
             self.scroll_to_bottom();
         }
     }
