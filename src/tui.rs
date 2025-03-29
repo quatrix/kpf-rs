@@ -208,6 +208,7 @@ pub fn run_app(
 }
 
 fn ui(f: &mut Frame, app: &mut App) {
+    f.clear();
     let area = f.size();
     render_logs_panel(f, app, area);
 }
