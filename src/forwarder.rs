@@ -13,6 +13,8 @@ const RETRY_DELAY_MS: u64 = 1000;
 
 use std::net::TcpListener;
 
+static FORWARD_STATUSES: Mutex<Vec<crate::tui::ForwardStatus>> = Mutex::new(Vec::new());
+
 fn find_available_port() -> Result<u16> {
     // Bind to port 0 to get an available port from the OS
     let listener = TcpListener::bind("127.0.0.1:0").context("Failed to bind to random port")?;
@@ -93,6 +95,16 @@ pub async fn start_single(
                             "🔄",
                             std::process::id()
                         ));
+                        {
+                            use crate::tui::ForwardStatus;
+                            let mut statuses = FORWARD_STATUSES.lock().unwrap();
+                            statuses.push(ForwardStatus {
+                                resource: format!("{}/{}", resource_type, resource_name),
+                                local_port,
+                                active: true,
+                                last_probe: None,
+                            });
+                        }
                     }
 
                     crate::logger::log_info(format!(
@@ -120,6 +132,12 @@ pub async fn start_single(
                                 Ok(Ok(response)) => {
                                     if response.status() == StatusCode::OK {
                                         crate::logger::log_info("Successful probe received.".to_string());
+                                        {
+                                            let mut statuses = FORWARD_STATUSES.lock().unwrap();
+                                            if let Some(entry) = statuses.last_mut() {
+                                                entry.last_probe = Some(chrono::Utc::now().to_rfc3339());
+                                            }
+                                        }
                                         break;
                                     } else {
                                         crate::logger::log_warning(format!("Probe returned non-OK status: {}", response.status()));
@@ -145,6 +163,12 @@ pub async fn start_single(
                             "🔄",
                             std::process::id()
                         ));
+                        {
+                            let mut statuses = FORWARD_STATUSES.lock().unwrap();
+                            if let Some(entry) = statuses.last_mut() {
+                                entry.active = false;
+                            }
+                        }
                     }
 
                     if let Err(e) = result {
