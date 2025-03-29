@@ -182,6 +182,12 @@ pub fn run_app(
                         KeyCode::Char('a') => {
                             app.toggle_auto_scroll();
                         }
+                        KeyCode::Char('j') => {
+                            app.scroll_down(max_scroll);
+                        }
+                        KeyCode::Char('k') => {
+                            app.scroll_up();
+                        }
                         _ => {}
                     }
                 }
