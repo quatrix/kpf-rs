@@ -390,7 +390,6 @@ pub async fn start_http_server(
                     req,
                     target,
                     port_forward_status.clone(),
-                    verbose_level,
                     show_liveness,
                     resource.clone(),
                     requests_log_file.clone(),

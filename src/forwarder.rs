@@ -30,7 +30,7 @@ pub async fn start_single(
     resource_port: u16,
     namespace: String,
     local_port: u16,
-    verbose: u8,
+    _verbose: u8,
     timeout: Option<u64>,
     liveness_probe: Option<String>,
     show_liveness: bool,
