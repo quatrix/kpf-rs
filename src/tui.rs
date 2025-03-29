@@ -458,20 +458,23 @@ fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect, _viewport_height:
         };
 
         // Function to create spans for a single line, highlighting search terms
-        let create_line_spans = |line_content: &str, style: Style, highlight_style: Style| -> Vec<Span> {
+
+        fn create_line_spans<'a>(
+            line_content: &'a str,
+            style: Style,
+            highlight_style: Style,
+            app: &App,
+        ) -> Vec<Span<'a>> {
             let mut spans = Vec::new();
             if app.search_query.is_empty() || !line_content.contains(&app.search_query) {
-                // No search query or no match in this line, return single span
+                // No search query or no match in this line, return single span with owned string.
                 spans.push(Span::styled(line_content.to_string(), style));
             } else {
                 // Highlight matches
                 let mut last_index = 0;
                 for (start, part) in line_content.match_indices(&app.search_query) {
                     if start > last_index {
-                        spans.push(Span::styled(
-                            &line_content[last_index..start],
-                            style,
-                        ));
+                        spans.push(Span::styled(&line_content[last_index..start], style));
                     }
                     spans.push(Span::styled(part, highlight_style));
                     last_index = start + part.len();
@@ -481,7 +484,7 @@ fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect, _viewport_height:
                 }
             }
             spans
-        };
+        }
 
         // Determine the highlight style to use for matches *on this specific log line*
         let match_highlight_style = if is_current_match {
@@ -495,30 +498,35 @@ fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect, _viewport_height:
 
         if message_lines.is_empty() || (message_lines.len() == 1 && message_lines[0].is_empty()) {
             // Handle potentially empty log messages
-             log_lines.push(Line::from(vec![Span::styled(
+            log_lines.push(Line::from(vec![Span::styled(
                 prefix.clone(),
                 Style::default().fg(Color::DarkGray),
             )]));
         } else {
             // First line with timestamp
-            let mut first_line_spans = vec![Span::styled(prefix.clone(), Style::default().fg(Color::DarkGray))];
+            let mut first_line_spans = vec![Span::styled(
+                prefix.clone(),
+                Style::default().fg(Color::DarkGray),
+            )];
             first_line_spans.extend(create_line_spans(
                 message_lines[0],
                 base_style,
                 match_highlight_style,
+                app,
             ));
             log_lines.push(Line::from(first_line_spans));
 
             // Subsequent lines indented
-            let indent_str = " ".repeat(prefix_width); // Use spaces for indent
+            let indent_str = "⠀".repeat(prefix_width); // Use spaces for indent
             for line_content in message_lines.iter().skip(1) {
-                 let mut subsequent_line_spans = vec![Span::raw(indent_str.clone())];
-                 subsequent_line_spans.extend(create_line_spans(
+                let mut subsequent_line_spans = vec![Span::raw(indent_str.clone())];
+                subsequent_line_spans.extend(create_line_spans(
                     line_content,
                     base_style,
                     match_highlight_style,
-                 ));
-                 log_lines.push(Line::from(subsequent_line_spans));
+                    app,
+                ));
+                log_lines.push(Line::from(subsequent_line_spans));
             }
         }
     }
