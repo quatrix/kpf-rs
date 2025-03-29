@@ -224,6 +224,24 @@ pub async fn start_from_config(
         config.forwards.len()
     ));
 
+    {
+        use crate::tui::ForwardStatus;
+        let mut statuses = FORWARD_STATUSES.lock().unwrap();
+        for forward in &config.forwards {
+            let (resource_type, resource_name, resource_port) = crate::k8s::parse_resource(&forward.resource)
+                .expect(&format!("Failed to parse resource: {}", forward.resource));
+            let local_port = forward.local_port.unwrap_or(resource_port);
+            statuses.insert(
+                format!("{}/{}", resource_type, resource_name),
+                ForwardStatus {
+                    resource: format!("{}/{}", resource_type, resource_name),
+                    local_port,
+                    active: false,
+                    last_probe: None,
+                },
+            );
+        }
+    }
     let requests_log_file_arc = std::sync::Arc::new(requests_log_file.clone());
 
     for forward in config.forwards {
