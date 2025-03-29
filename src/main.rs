@@ -3,7 +3,6 @@ use clap::Parser;
 use std::path::PathBuf;
 use std::time::Duration;
 
-mod cli;
 mod config;
 mod forwarder;
 mod http;
@@ -53,9 +52,6 @@ struct Args {
     /// Verbosity level for requests log file (0-3)
     #[arg(long, default_value = "1")]
     requests_log_verbosity: u8,
-    /// Use CLI mode instead of TUI
-    #[arg(long, default_value_t = false)]
-    cli_mode: bool,
 }
 
 #[tokio::main]
@@ -65,13 +61,7 @@ async fn main() -> Result<()> {
     // Initialize logger with verbosity level
     logger::init(args.verbose);
     
-    if args.cli_mode {
-        // Run in CLI mode (original behavior)
-        run_cli_mode(args).await
-    } else {
-        // Run in TUI mode
-        run_tui_mode(args).await
-    }
+    run_tui_mode(args).await
 }
 
 async fn run_cli_mode(args: Args) -> Result<()> {
