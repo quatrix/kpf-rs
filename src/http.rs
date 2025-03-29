@@ -147,9 +147,7 @@ async fn proxy_request(
                             if requests_log_file.is_some() {
                                 serde_json::to_string(&json_value).unwrap_or(json_str)
                             } else {
-                                colored_json::to_colored_json(&json_value).unwrap_or_else(|_| {
-                                    serde_json::to_string_pretty(&json_value).unwrap_or(json_str)
-                                })
+                                serde_json::to_string_pretty(&json_value).unwrap_or(json_str)
                             }
                         } else {
                             serde_json::to_string_pretty(&json_value).unwrap_or(json_str)
