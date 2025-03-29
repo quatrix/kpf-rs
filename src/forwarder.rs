@@ -101,65 +101,41 @@ pub async fn start_single(
                     ));
 
                     crate::logger::log_info(format!(
-                        "{} Port-forward active, waiting for connection to establish...",
+                        "{} Port-forward active, waiting for first successful probe...",
                         "🔄"
                     ));
-
-                    // Add a small delay to ensure the port-forward is fully established
-                    sleep(Duration::from_millis(500)).await;
-
+                    if let Some(probe_path) = liveness_probe.clone() {
+                        use hyper::{Body, Client, Request, StatusCode};
+                        let client = Client::new();
+                        let timeout_duration = std::time::Duration::from_secs(timeout.unwrap_or(3));
+                        loop {
+                            sleep(Duration::from_secs(5)).await;
+                            let url = format!("http://127.0.0.1:{}{}", internal_port, probe_path);
+                            let req = Request::get(url)
+                                .header("x-internal-probe", "true")
+                                .body(Body::empty())
+                                .unwrap();
+                            let res = tokio::time::timeout(timeout_duration, client.request(req)).await;
+                            match res {
+                                Ok(Ok(response)) => {
+                                    if response.status() == StatusCode::OK {
+                                        crate::logger::log_info("Successful probe received.".to_string());
+                                        break;
+                                    } else {
+                                        crate::logger::log_warning(format!("Probe returned non-OK status: {}", response.status()));
+                                    }
+                                },
+                                _ => {
+                                    crate::logger::log_warning("Probe failed or timed out.".to_string());
+                                }
+                            }
+                        }
+                    }
                     crate::logger::log_success(format!(
                         "{} Port-forward ready to accept connections",
                         "✅"
                     ));
-
-                    let pf_future = pf;
-                    let result = if let Some(probe_path) = liveness_probe.clone() {
-                        use hyper::{Body, Client, Request, StatusCode};
-                        let liveness_future = async {
-                            loop {
-                                sleep(Duration::from_secs(5)).await;
-                                let client = Client::new();
-                                let url =
-                                    format!("http://127.0.0.1:{}{}", internal_port, probe_path);
-                                let req = Request::get(url)
-                                    .header("x-internal-probe", "true")
-                                    .body(Body::empty())
-                                    .unwrap();
-                                let timeout_duration =
-                                    std::time::Duration::from_secs(timeout.unwrap_or(3));
-                                let res =
-                                    tokio::time::timeout(timeout_duration, client.request(req))
-                                        .await;
-                                match res {
-                                    Ok(Ok(response)) => {
-                                        if response.status() != StatusCode::OK {
-                                            break Err(anyhow::anyhow!(
-                                                "Liveness probe returned non-OK status: {}",
-                                                response.status()
-                                            ));
-                                        }
-                                    }
-                                    _ => {
-                                        break Err(anyhow::anyhow!(
-                                            "Liveness probe request failed or timed out"
-                                        ))
-                                    }
-                                }
-                            }
-                        };
-                        tokio::select! {
-                            res = pf_future => res,
-                            liveness_err = liveness_future => {
-                                if let Some(mut child) = child_handle.lock().await.take() {
-                                    let _ = child.kill().await;
-                                }
-                                liveness_err
-                            }
-                        }
-                    } else {
-                        pf_future.await
-                    };
+                    let result = pf.await;
 
                     {
                         let mut status = port_forward_status.lock().unwrap();
