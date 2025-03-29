@@ -272,7 +272,7 @@ fn render_status_panel(f: &mut Frame, app: &mut App, area: Rect) {
         Cell::from("Status"),
         Cell::from("Last Probe"),
     ])
-    .style(Style::default().fg(Color::White))
+    .style(Style::default().bg(Color::Blue).fg(Color::White))
     .bottom_margin(0);
     let rows: Vec<Row> = app
         .forward_statuses
