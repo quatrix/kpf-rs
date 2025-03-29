@@ -6,15 +6,14 @@ use crossterm::{
 };
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, Wrap},
     Frame,
+    text::{Span, Spans},
 };
 use std::io;
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
-use ratatui::text::Span;
-use ratatui::widgets::Wrap;
 use textwrap::{self, Options};
 
 pub struct LogEntry {
