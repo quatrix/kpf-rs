@@ -82,7 +82,7 @@ impl App {
         }
 
         if let Ok(statuses) = crate::forwarder::FORWARD_STATUSES.lock() {
-            self.forward_statuses = statuses.clone();
+            self.forward_statuses = statuses.values().cloned().collect();
         }
     }
 

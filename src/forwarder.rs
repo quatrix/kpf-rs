@@ -13,7 +13,8 @@ const RETRY_DELAY_MS: u64 = 1000;
 
 use std::net::TcpListener;
 
-pub static FORWARD_STATUSES: Mutex<Vec<crate::tui::ForwardStatus>> = Mutex::new(Vec::new());
+use std::collections::HashMap;
+pub static FORWARD_STATUSES: Mutex<HashMap<String, crate::tui::ForwardStatus>> = Mutex::new(HashMap::new());
 
 fn find_available_port() -> Result<u16> {
     // Bind to port 0 to get an available port from the OS
@@ -98,7 +99,7 @@ pub async fn start_single(
                         {
                             use crate::tui::ForwardStatus;
                             let mut statuses = FORWARD_STATUSES.lock().unwrap();
-                            statuses.push(ForwardStatus {
+                            statuses.insert(format!("{}/{}", resource_type, resource_name), ForwardStatus {
                                 resource: format!("{}/{}", resource_type, resource_name),
                                 local_port,
                                 active: true,
@@ -134,9 +135,10 @@ pub async fn start_single(
                                         crate::logger::log_info("Successful probe received.".to_string());
                                         {
                                             let mut statuses = FORWARD_STATUSES.lock().unwrap();
-                                            if let Some(entry) = statuses.last_mut() {
+                                            let key = format!("{}/{}", resource_type, resource_name);
+                                            statuses.entry(key).and_modify(|entry| {
                                                 entry.last_probe = Some(chrono::Utc::now().to_rfc3339());
-                                            }
+                                            });
                                         }
                                         break;
                                     } else {
@@ -165,9 +167,8 @@ pub async fn start_single(
                         ));
                         {
                             let mut statuses = FORWARD_STATUSES.lock().unwrap();
-                            if let Some(entry) = statuses.last_mut() {
-                                entry.active = false;
-                            }
+                            let key = format!("{}/{}", resource_type, resource_name);
+                            statuses.entry(key).and_modify(|entry| entry.active = false);
                         }
                     }
 
