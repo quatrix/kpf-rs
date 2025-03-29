@@ -110,7 +110,7 @@ impl App {
         if !self.logs.is_empty() {
             // Set scroll to the maximum possible value
             // This will be adjusted in the UI rendering to ensure we're at the bottom
-            self.scroll = self.logs.len();
+            self.scroll = self.logs.len().saturating_sub(1);
         } else {
             self.scroll = 0;
         }
@@ -219,19 +219,8 @@ fn ui(f: &mut Frame, app: &App) {
     // Calculate visible area
     let inner_height = size.height.saturating_sub(2) as usize; // -2 for borders
 
-    // Calculate the range of logs to display based on scroll position
-    let total_logs = app.logs.len();
-    let scroll_offset = if total_logs > inner_height {
-        let max_scroll = total_logs - inner_height;
-        app.scroll.min(max_scroll)
-    } else {
-        0
-    };
-    
-    // Get only the visible logs for the current view
-    let visible_logs = app.logs.iter()
-        .skip(scroll_offset)
-        .take(inner_height)
+    // Create the full log text for all logs
+    let log_text = app.logs.iter()
         .map(|log| {
             let timestamp = log.timestamp.format("%H:%M:%S").to_string();
             let color = match log.level {
@@ -250,10 +239,19 @@ fn ui(f: &mut Frame, app: &App) {
         })
         .collect::<Vec<Line>>();
 
-    // Create a paragraph with the logs
-    let logs = Paragraph::new(visible_logs)
+    // Calculate scroll position
+    let scroll_offset = if app.logs.len() > inner_height {
+        let max_scroll = app.logs.len().saturating_sub(inner_height);
+        app.scroll.min(max_scroll)
+    } else {
+        0
+    };
+
+    // Create a paragraph with the logs and apply scrolling
+    let logs = Paragraph::new(log_text)
         .block(logs_block)
-        .wrap(Wrap { trim: false });
+        .wrap(Wrap { trim: false })
+        .scroll((scroll_offset as u16, 0));
 
     // Render the logs
     f.render_widget(logs, size);
