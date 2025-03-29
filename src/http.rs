@@ -378,7 +378,6 @@ pub async fn start_http_server(
 
     let make_svc = make_service_fn(move |_conn| {
         let port_forward_status = port_forward_status_clone.clone();
-        let verbose_level = verbose;
         let target = target_port;
         let show_liveness = show_liveness;
         let resource = resource.clone();

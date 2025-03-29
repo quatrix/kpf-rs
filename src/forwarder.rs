@@ -14,7 +14,8 @@ const RETRY_DELAY_MS: u64 = 1000;
 use std::net::TcpListener;
 
 use std::collections::HashMap;
-pub static FORWARD_STATUSES: Mutex<HashMap<String, crate::tui::ForwardStatus>> = Mutex::new(HashMap::new());
+use std::sync::LazyLock;
+pub static FORWARD_STATUSES: LazyLock<Mutex<HashMap<String, crate::tui::ForwardStatus>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
 fn find_available_port() -> Result<u16> {
     // Bind to port 0 to get an available port from the OS

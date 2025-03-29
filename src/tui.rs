@@ -16,7 +16,7 @@ use std::io;
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
-use textwrap::{self};
+use textwrap;
 
 // New struct: ForwardStatus holds the state for a port-forward
 #[derive(Clone)]
@@ -315,7 +315,7 @@ fn render_status_panel(f: &mut Frame, app: &mut App, area: Rect) {
 fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect) {
     f.render_widget(Clear, area);
     // Build log lines with timestamp prefixes and colored messages, wrapping long messages into multiple lines
-    let inner_width = if area.width > 2 {
+    let _inner_width = if area.width > 2 {
         area.width - 2
     } else {
         area.width
