@@ -168,39 +168,41 @@ async fn proxy_request(
             } else {
                 (response, None)
             };
-            if let Some(ref log_path) = requests_log_file {
-                use std::fs::OpenOptions;
-                use std::io::Write;
-                let timestamp = chrono::Utc::now().to_rfc3339();
-                let log_line = if requests_log_verbosity >= 3 {
-                    format!(
-                        "{} {} - {} {} → {} ({}) [Payload: {}]\n",
-                        timestamp,
-                        resource,
-                        method.as_str(),
-                        path,
-                        status.to_string(),
-                        elapsed.as_millis(),
-                        opt_resp_body.as_deref().unwrap_or("N/A")
-                    )
-                } else {
-                    format!(
-                        "{} {} - {} {} → {} ({})\n",
-                        timestamp,
-                        resource,
-                        method.as_str(),
-                        path,
-                        status.to_string(),
-                        elapsed.as_millis()
-                    )
-                };
-                if let Ok(mut file) = OpenOptions::new().append(true).create(true).open(log_path) {
-                    let _ = file.write_all(log_line.as_bytes());
-                } else {
-                    crate::logger::log_error(format!(
-                        "Failed to write to log file: {}",
-                        log_path.display()
-                    ));
+            if verbose > 0 {
+                if let Some(ref log_path) = requests_log_file {
+                    use std::fs::OpenOptions;
+                    use std::io::Write;
+                    let timestamp = chrono::Utc::now().to_rfc3339();
+                    let log_line = if requests_log_verbosity >= 3 {
+                        format!(
+                            "{} {} - {} {} → {} ({}) [Payload: {}]\n",
+                            timestamp,
+                            resource,
+                            method.as_str(),
+                            path,
+                            status.to_string(),
+                            elapsed.as_millis(),
+                            opt_resp_body.as_deref().unwrap_or("N/A")
+                        )
+                    } else {
+                        format!(
+                            "{} {} - {} {} → {} ({})\n",
+                            timestamp,
+                            resource,
+                            method.as_str(),
+                            path,
+                            status.to_string(),
+                            elapsed.as_millis()
+                        )
+                    };
+                    if let Ok(mut file) = OpenOptions::new().append(true).create(true).open(log_path) {
+                        let _ = file.write_all(log_line.as_bytes());
+                    } else {
+                        crate::logger::log_error(format!(
+                            "Failed to write to log file: {}",
+                            log_path.display()
+                        ));
+                    }
                 }
             }
             // Log request body if available and not a GET request
