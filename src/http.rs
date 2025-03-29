@@ -1,4 +1,3 @@
-use crate::cli;
 use anyhow::Result;
 use colored::*;
 use hyper::service::{make_service_fn, service_fn};
@@ -188,7 +187,7 @@ async fn proxy_request(
         }
         Err(e) => {
             let error_msg = format!("Failed to forward request: {}", e);
-            crate::logger::log_error(error_msg);
+            crate::logger::log_error(error_msg.clone());
             
             let mut response = Response::new(Body::from(error_msg));
             *response.status_mut() = StatusCode::BAD_GATEWAY;

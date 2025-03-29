@@ -134,7 +134,7 @@ async fn run_tui_mode(args: Args) -> Result<()> {
     // Spawn a thread to handle the port forwarding
     let args_clone = args.clone();
     let log_sender_clone = log_sender.clone();
-    let port_forward_handle = tokio::spawn(async move {
+    let _port_forward_handle = tokio::spawn(async move {
         // Log startup information
         log_sender_clone.send(tui::LogEntry {
             timestamp: chrono::Utc::now(),
