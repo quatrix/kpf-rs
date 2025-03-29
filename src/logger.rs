@@ -13,21 +13,20 @@ pub fn init(verbose: u8) {
         2 => "debug",
         _ => "trace",
     };
-    
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(filter));
-    
+
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(filter));
+
     // Configure tracing to use a no-op subscriber when in TUI mode
     // This prevents tracing logs from interfering with our custom logging
     let is_tui_mode = unsafe { LOG_SENDER.is_some() };
-    
+
     if !is_tui_mode {
         fmt::fmt()
             .with_env_filter(env_filter)
             .with_target(false)
             .init();
     }
-    
+
     log_info(format!("📝 Log level set to {}", filter));
 }
 

@@ -53,7 +53,7 @@ impl App {
         while let Ok(log) = self.log_receiver.try_recv() {
             self.logs.push(log);
         }
-        
+
         // Auto-scroll to bottom if enabled and we received new logs
         if had_new_logs && self.auto_scroll {
             self.scroll_to_bottom();
@@ -67,14 +67,14 @@ impl App {
     pub fn should_quit(&self) -> bool {
         self.should_quit
     }
-    
+
     pub fn scroll_up(&mut self) {
         if self.scroll > 0 {
             self.scroll -= 1;
             self.auto_scroll = false;
         }
     }
-    
+
     pub fn scroll_down(&mut self, max_scroll: usize) {
         if self.scroll < max_scroll {
             self.scroll += 1;
@@ -84,7 +84,7 @@ impl App {
             }
         }
     }
-    
+
     pub fn page_up(&mut self, page_size: usize) {
         if self.scroll > page_size {
             self.scroll -= page_size;
@@ -93,7 +93,7 @@ impl App {
         }
         self.auto_scroll = false;
     }
-    
+
     pub fn page_down(&mut self, page_size: usize, max_scroll: usize) {
         if self.scroll + page_size < max_scroll {
             self.scroll += page_size;
@@ -102,7 +102,7 @@ impl App {
             self.auto_scroll = true;
         }
     }
-    
+
     pub fn scroll_to_bottom(&mut self) {
         if !self.logs.is_empty() {
             self.scroll = self.logs.len().saturating_sub(1);
@@ -111,12 +111,12 @@ impl App {
         }
         self.auto_scroll = true;
     }
-    
+
     pub fn scroll_to_top(&mut self) {
         self.scroll = 0;
         self.auto_scroll = false;
     }
-    
+
     pub fn toggle_auto_scroll(&mut self) {
         self.auto_scroll = !self.auto_scroll;
         if self.auto_scroll {
@@ -131,14 +131,14 @@ pub fn run_app(
     tick_rate: Duration,
 ) -> Result<()> {
     let mut last_tick = Instant::now();
-    
+
     loop {
         // Calculate the maximum scroll position based on the current terminal size
         let max_scroll = {
             let size = terminal.size()?;
             app.logs.len().saturating_sub(size.height as usize - 2) // -2 for borders
         };
-        
+
         terminal.draw(|f| ui(f, app))?;
 
         let timeout = tick_rate
@@ -204,7 +204,7 @@ fn ui(f: &mut Frame, app: &App) {
     } else {
         " Logs (Auto-Scroll: OFF) "
     };
-    
+
     let logs_block = Block::default()
         .title(title)
         .title_alignment(Alignment::Left)
@@ -213,7 +213,7 @@ fn ui(f: &mut Frame, app: &App) {
 
     // Calculate visible area
     let inner_height = size.height.saturating_sub(2) as usize; // -2 for borders
-    
+
     // Create the log text
     let log_text = app
         .logs
@@ -227,7 +227,10 @@ fn ui(f: &mut Frame, app: &App) {
                 LogLevel::Error => Color::Red,
             };
             Line::from(vec![
-                Span::styled(format!("[{}] ", timestamp), Style::default().fg(Color::DarkGray)),
+                Span::styled(
+                    format!("[{}] ", timestamp),
+                    Style::default().fg(Color::DarkGray),
+                ),
                 Span::styled(log.message.clone(), Style::default().fg(color)),
             ])
         })
@@ -249,7 +252,7 @@ fn ui(f: &mut Frame, app: &App) {
 
     // Render the logs
     f.render_widget(logs, size);
-    
+
     // If we have logs and are not in auto-scroll mode, show a scroll indicator
     if !app.logs.is_empty() && !app.auto_scroll {
         let scroll_percent = if app.logs.len() <= inner_height {
@@ -257,20 +260,20 @@ fn ui(f: &mut Frame, app: &App) {
         } else {
             (scroll_offset * 100) / (app.logs.len() - inner_height)
         };
-        
+
         let scroll_indicator = format!(" {scroll_percent}% ");
         let scroll_indicator_width = scroll_indicator.len() as u16;
-        
+
         let scroll_indicator_layout = Rect {
             x: size.width - scroll_indicator_width - 1,
             y: 0,
             width: scroll_indicator_width,
             height: 1,
         };
-        
+
         let scroll_indicator_paragraph = Paragraph::new(scroll_indicator)
             .style(Style::default().bg(Color::Cyan).fg(Color::Black));
-        
+
         f.render_widget(scroll_indicator_paragraph, scroll_indicator_layout);
     }
 }
