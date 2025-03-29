@@ -249,10 +249,12 @@ fn ui(f: &mut Frame, app: &mut App) {
     let chunks = Layout::vertical([
         Constraint::Length(5), // fixed height for Status panel
         Constraint::Min(0),    // remaining area for Logs
+        Constraint::Length(1), // fixed height for Command panel
     ])
     .split(area);
     render_status_panel(f, app, chunks[0]);
     render_logs_panel(f, app, chunks[1]);
+    render_command_panel(f, app, chunks[2]);
 }
 
 fn render_status_panel(f: &mut Frame, app: &mut App, area: Rect) {
@@ -378,6 +380,16 @@ fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect) {
         scrollbar_area,
         &mut app.log_scroll_state,
     );
+}
+
+fn render_command_panel(f: &mut Frame, _app: &mut App, area: Rect) {
+    let command_text = " Quit: q | Verbosity: v | Auto-scroll: a | Search: / | Scroll: ↑/↓/PgUp/PgDn/Home/End ";
+    let paragraph = Paragraph::new(Span::styled(
+        command_text,
+        Style::default().fg(Color::White).bg(Color::Blue),
+    ))
+    .alignment(Alignment::Left);
+    f.render_widget(paragraph, area);
 }
 
 pub fn setup_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>> {
