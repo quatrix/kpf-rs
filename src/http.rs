@@ -3,8 +3,8 @@ use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Client, Request, Response, Server, StatusCode};
 use std::convert::Infallible;
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 static HTTP_VERBOSE: AtomicU8 = AtomicU8::new(1);
 
@@ -124,12 +124,7 @@ async fn proxy_request(
             // Always log to the TUI logger
             crate::logger::log_success(format!(
                 "{} {} - {} {} → {} ({})",
-                "✓",
-                resource,
-                colored_method,
-                path,
-                status_colored,
-                duration_colored
+                "✓", resource, colored_method, path, status_colored, duration_colored
             ));
             let (response, opt_resp_body) = if verbose >= 3
                 || (requests_log_file.is_some() && requests_log_verbosity >= 3)
@@ -215,8 +210,7 @@ async fn proxy_request(
                 if let Some(resp_body_str) = opt_resp_body {
                     crate::logger::log_info(format!(
                         "{} Response payload:\n{}",
-                        "📄",
-                        resp_body_str
+                        "📄", resp_body_str
                     ));
                 }
             }
@@ -333,11 +327,7 @@ async fn handle_internal_status(
     crate::logger::log_info(format!(
         "{} Internal status request: {}",
         "🔍",
-        if is_active {
-            "ACTIVE"
-        } else {
-            "INACTIVE"
-        }
+        if is_active { "ACTIVE" } else { "INACTIVE" }
     ));
 
     // Return JSON response
@@ -367,11 +357,7 @@ pub async fn start_http_server(
         "🌐",
         format!("http://localhost:{}", local_port)
     ));
-    crate::logger::log_info(format!(
-        "{} Verbosity level set to {}",
-        "🔍",
-        verbose
-    ));
+    crate::logger::log_info(format!("{} Verbosity level set to {}", "🔍", verbose));
 
     let port_forward_status_clone = port_forward_status.clone();
 
