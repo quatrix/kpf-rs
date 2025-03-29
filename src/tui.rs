@@ -264,29 +264,40 @@ fn ui(f: &mut Frame, app: &mut App) {
 }
 
 fn render_status_panel(f: &mut Frame, app: &mut App, area: Rect) {
-    let mut status_lines: Vec<Line> = Vec::new();
-    for st in &app.forward_statuses {
-        let status_text = if st.active {
+    use ratatui::widgets::{Table, Row, Cell};
+    let header = Row::new(vec![
+        Cell::from("Resource"),
+        Cell::from("Local Port"),
+        Cell::from("Status"),
+        Cell::from("Last Probe"),
+    ])
+    .style(Style::default().fg(Color::White))
+    .bottom_margin(1);
+    let rows: Vec<Row> = app.forward_statuses.iter().map(|st| {
+        let status_str = if st.active {
             "ACTIVE"
+        } else if st.last_probe.is_none() {
+            "INITIALIZING"
         } else {
             "INACTIVE"
         };
-        let last_probe = st.last_probe.clone().unwrap_or_else(|| "N/A".to_string());
-        let line_text = format!("{} (port {}) - {} - Last Probe: {}",
-            st.resource, st.local_port, status_text, last_probe);
-        status_lines.push(Line::from(vec![Span::raw(line_text)]));
-    }
-    if status_lines.is_empty() {
-        status_lines.push(Line::from(vec![Span::raw("No forward statuses available.")]));
-    }
-    let block = Block::default()
-        .title("Status")
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Magenta));
-    let paragraph = Paragraph::new(status_lines)
-        .block(block)
-        .wrap(Wrap { trim: true });
-    f.render_widget(paragraph, area);
+        Row::new(vec![
+            Cell::from(st.resource.clone()),
+            Cell::from(st.local_port.to_string()),
+            Cell::from(status_str),
+            Cell::from(st.last_probe.clone().unwrap_or_else(|| "N/A".to_string())),
+        ])
+    }).collect();
+    let table = Table::new(rows)
+        .header(header)
+        .block(Block::default().title("Status").borders(Borders::ALL).border_style(Style::default().fg(Color::Magenta)))
+        .widths(&[
+            Constraint::Percentage(40),
+            Constraint::Length(10),
+            Constraint::Length(12),
+            Constraint::Percentage(38),
+        ]);
+    f.render_widget(table, area);
 }
 
 fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect) {
