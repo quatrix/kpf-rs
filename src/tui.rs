@@ -69,18 +69,18 @@ impl App {
     pub fn on_tick(&mut self) {
         // Process any new log messages
         let mut received_logs = false;
-    
+
         // Try to receive all pending log messages
         while let Ok(log) = self.log_receiver.try_recv() {
             self.logs.push(log);
             received_logs = true;
         }
-    
+
         // Auto-scroll to bottom if enabled and we received new logs
         if received_logs && self.auto_scroll {
             self.scroll_to_bottom();
         }
-        
+
         if let Ok(statuses) = crate::forwarder::FORWARD_STATUSES.lock() {
             self.forward_statuses = statuses.clone();
         }
@@ -258,13 +258,14 @@ fn ui(f: &mut Frame, app: &mut App) {
     let chunks = Layout::vertical([
         Constraint::Length(5), // fixed height for Status panel
         Constraint::Min(0),    // remaining area for Logs
-    ]).split(area);
+    ])
+    .split(area);
     render_status_panel(f, app, chunks[0]);
     render_logs_panel(f, app, chunks[1]);
 }
 
 fn render_status_panel(f: &mut Frame, app: &mut App, area: Rect) {
-    use ratatui::widgets::{Table, Row, Cell};
+    use ratatui::widgets::{Cell, Row, Table};
     let header = Row::new(vec![
         Cell::from("Resource"),
         Cell::from("Local Port"),
@@ -272,22 +273,26 @@ fn render_status_panel(f: &mut Frame, app: &mut App, area: Rect) {
         Cell::from("Last Probe"),
     ])
     .style(Style::default().fg(Color::White))
-    .bottom_margin(1);
-    let rows: Vec<Row> = app.forward_statuses.iter().map(|st| {
-        let status_str = if st.active {
-            "ACTIVE"
-        } else if st.last_probe.is_none() {
-            "INITIALIZING"
-        } else {
-            "INACTIVE"
-        };
-        Row::new(vec![
-            Cell::from(st.resource.clone()),
-            Cell::from(st.local_port.to_string()),
-            Cell::from(status_str),
-            Cell::from(st.last_probe.clone().unwrap_or_else(|| "N/A".to_string())),
-        ])
-    }).collect();
+    .bottom_margin(0);
+    let rows: Vec<Row> = app
+        .forward_statuses
+        .iter()
+        .map(|st| {
+            let status_str = if st.active {
+                "ACTIVE"
+            } else if st.last_probe.is_none() {
+                "INITIALIZING"
+            } else {
+                "INACTIVE"
+            };
+            Row::new(vec![
+                Cell::from(st.resource.clone()),
+                Cell::from(st.local_port.to_string()),
+                Cell::from(status_str),
+                Cell::from(st.last_probe.clone().unwrap_or_else(|| "N/A".to_string())),
+            ])
+        })
+        .collect();
     let table = Table::new(
         rows,
         &[
@@ -295,10 +300,15 @@ fn render_status_panel(f: &mut Frame, app: &mut App, area: Rect) {
             Constraint::Length(10),
             Constraint::Length(12),
             Constraint::Percentage(38),
-        ]
+        ],
     )
     .header(header)
-    .block(Block::default().title("Status").borders(Borders::ALL).border_style(Style::default().fg(Color::Magenta)));
+    .block(
+        Block::default()
+            .title("Status")
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Magenta)),
+    );
     f.render_widget(table, area);
 }
 
