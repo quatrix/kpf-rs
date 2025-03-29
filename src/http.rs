@@ -175,11 +175,11 @@ async fn proxy_request(
                 }
             }
             if verbose >= 2 && req_body_for_logging.is_some() && method != hyper::Method::GET {
-                println!("{} Request body:\n{}", "📄".bright_blue(), req_body_for_logging.unwrap());
+                crate::logger::log_info(format!("{} Request body:\n{}", "📄".bright_blue(), req_body_for_logging.unwrap()));
             }
             if verbose >= 3 {
                 if let Some(resp_body_str) = opt_resp_body {
-                    println!("{} Response body:\n{}", "📄".bright_green(), resp_body_str);
+                    crate::logger::log_info(format!("{} Response body:\n{}", "📄".bright_green(), resp_body_str));
                 }
             }
             Ok(response)
@@ -212,14 +212,14 @@ async fn proxy_request(
                     hyper::Method::DELETE => "DELETE".bright_red(),
                     _ => method.as_str().normal(),
                 };
-                println!("{} {} - {} {} → {} ({})", 
+                crate::logger::log_error(format!("{} {} - {} {} → {} ({})", 
                     "✗".bright_red(),
                     resource,
                     colored_method,
                     path,
                     "502 Bad Gateway".bright_red(),
                     format!("{}ms", start.elapsed().as_millis()).bright_yellow()
-                );
+                ));
             }
             
             Ok(response)
@@ -271,7 +271,7 @@ async fn handle_internal_status(
     let status_json = serde_json::to_string_pretty(&status_info).unwrap();
     
     // Log the status request
-    println!("{} Internal status request: {}", "🔍".bright_magenta(), if is_active { "ACTIVE".bright_green() } else { "INACTIVE".bright_red() });
+    crate::logger::log_info(format!("{} Internal status request: {}", "🔍".bright_magenta(), if is_active { "ACTIVE".bright_green() } else { "INACTIVE".bright_red() }));
     
     // Return JSON response
     let mut response = Response::new(Body::from(status_json));
@@ -295,8 +295,8 @@ pub async fn start_http_server(
 ) -> Result<(), hyper::Error> {
     let addr = SocketAddr::from(([127, 0, 0, 1], local_port));
     
-    println!("{} HTTP proxy server listening on {}", "🌐".bright_green(), format!("http://localhost:{}", local_port).bright_blue());
-    println!("{} Verbosity level set to {}", "🔍".bright_yellow(), verbose);
+    crate::logger::log_info(format!("{} HTTP proxy server listening on {}", "🌐".bright_green(), format!("http://localhost:{}", local_port).bright_blue()));
+    crate::logger::log_info(format!("{} Verbosity level set to {}", "🔍".bright_yellow(), verbose));
     
     let port_forward_status_clone = port_forward_status.clone();
     

@@ -2,7 +2,7 @@
 name = "k8s-port-forward"
 version = "0.1.0"
 edition = "2021"
-description = "A CLI utility for Kubernetes port-forwarding with improved ergonomics"
+description = "A TUI utility for Kubernetes port-forwarding with improved ergonomics"
 authors = ["Your Name <your.email@example.com>"]
 
 [dependencies]
@@ -24,3 +24,5 @@ futures = "0.3"
 thiserror = "1.0"
 chrono = "0.4"
 colored_json = "0.1"
+ratatui = "0.26.1"
+crossterm = "0.27.0"

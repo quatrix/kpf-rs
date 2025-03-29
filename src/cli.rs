@@ -1,20 +1,17 @@
 use colored::*;
+use crate::logger;
 
 pub fn print_startup_banner() {
-    println!(
-        "{}",
-        "╔════════════════════════════════════════════╗".bright_blue()
-    );
-    println!(
-        "{} {}                                  {}",
+    let banner = format!(
+        "{}\n{} {}                                  {}\n{}",
+        "╔════════════════════════════════════════════╗".bright_blue(),
         "║".bright_blue(),
         "🚀 K8s Port Forward".bright_green(),
-        "║".bright_blue()
-    );
-    println!(
-        "{}",
+        "║".bright_blue(),
         "╚════════════════════════════════════════════╝".bright_blue()
     );
+    
+    logger::log_info(banner);
 }
 
 pub fn print_forwarding_status(resource: &str, local_port: u16, remote_port: u16, alive: bool) {
@@ -24,7 +21,7 @@ pub fn print_forwarding_status(resource: &str, local_port: u16, remote_port: u16
         "❌ DISCONNECTED".bright_red()
     };
 
-    println!(
+    let message = format!(
         "{} Port forward {} → {} {} ({})",
         "🔄".cyan(),
         local_port.to_string().bright_green(),
@@ -32,17 +29,25 @@ pub fn print_forwarding_status(resource: &str, local_port: u16, remote_port: u16
         resource.bright_blue(),
         status
     );
+    
+    if alive {
+        logger::log_success(message);
+    } else {
+        logger::log_error(message);
+    }
 }
 
 pub fn print_error(message: &str) {
-    eprintln!("{} {}", "❌".bright_red(), message.bright_red());
+    logger::log_error(message.to_string());
 }
 
 pub fn print_retry(attempt: u32, max_attempts: u32) {
-    println!(
+    let message = format!(
         "{} Retrying connection ({}/{})",
         "🔄".yellow(),
         attempt.to_string().bright_yellow(),
         max_attempts.to_string()
     );
+    
+    logger::log_warning(message);
 }

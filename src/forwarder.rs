@@ -46,7 +46,7 @@ pub async fn start_single(
 
     // Find an available port for the internal port-forward
     let internal_port = find_available_port()?;
-    println!("{} Using internal port {} for port-forward", "🔌".bright_cyan(), internal_port);
+    crate::logger::log_info(format!("{} Using internal port {} for port-forward", "🔌".bright_cyan(), internal_port));
 
     // Start HTTP server on the user-specified port
     let resource_prefix = format!("{}/{}:{}", resource_type, resource_name, resource_port);
@@ -70,9 +70,9 @@ pub async fn start_single(
                     {
                         let mut status = port_forward_status.lock().unwrap();
                         *status = true;
-                        println!("{} Port-forward status set to ACTIVE (PID: {})", 
+                        crate::logger::log_info(format!("{} Port-forward status set to ACTIVE (PID: {})", 
                             "🔄".bright_cyan(), 
-                            std::process::id());
+                            std::process::id()));
                     }
                     
                     cli::print_forwarding_status(
@@ -82,17 +82,17 @@ pub async fn start_single(
                         true,
                     );
                     
-                    println!("{} HTTP proxy listening on port {} and forwarding to internal port {}", 
+                    crate::logger::log_info(format!("{} HTTP proxy listening on port {} and forwarding to internal port {}", 
                         "🔄".bright_blue(), 
                         local_port.to_string().bright_green(),
-                        internal_port.to_string().bright_yellow());
+                        internal_port.to_string().bright_yellow()));
                     
-                    println!("{} Port-forward active, waiting for connection to establish...", "🔄".bright_cyan());
+                    crate::logger::log_info(format!("{} Port-forward active, waiting for connection to establish...", "🔄".bright_cyan()));
                     
                     // Add a small delay to ensure the port-forward is fully established
                     sleep(Duration::from_millis(500)).await;
                     
-                    println!("{} Port-forward ready to accept connections", "✅".bright_green());
+                    crate::logger::log_success(format!("{} Port-forward ready to accept connections", "✅".bright_green()));
                     
                     let pf_future = pf;
                     let result = if let Some(probe_path) = liveness_probe.clone() {
@@ -131,9 +131,9 @@ pub async fn start_single(
                     {
                         let mut status = port_forward_status.lock().unwrap();
                         *status = false;
-                        println!("{} Port-forward status set to INACTIVE (PID: {})", 
+                        crate::logger::log_warning(format!("{} Port-forward status set to INACTIVE (PID: {})", 
                             "🔄".bright_red(), 
-                            std::process::id());
+                            std::process::id()));
                     }
                     
                     cli::print_forwarding_status(
@@ -167,7 +167,7 @@ pub async fn start_single(
 
     // Wait for shutdown signal
     if let Some(_) = rx.recv().await {
-        println!("{} Shutting down...", "🛑".bright_red());
+        crate::logger::log_warning(format!("{} Shutting down...", "🛑".bright_red()));
     }
 
     // Wait for tasks to complete
@@ -180,9 +180,9 @@ pub async fn start_from_config(config: Config, show_liveness: bool, requests_log
     let verbose = config.verbose.unwrap_or(1);
     let mut handles = Vec::new();
     
-    println!("{} Starting {} port-forwards from config", 
+    crate::logger::log_info(format!("{} Starting {} port-forwards from config", 
         "📋".bright_cyan(), 
-        config.forwards.len().to_string().bright_yellow());
+        config.forwards.len().to_string().bright_yellow()));
     
     let requests_log_file_arc = std::sync::Arc::new(requests_log_file.clone());
     

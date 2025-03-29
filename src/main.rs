@@ -1,6 +1,10 @@
+use anyhow::Result;
 use clap::Parser;
 use colored::*;
 use std::path::PathBuf;
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
 
 mod cli;
 mod config;
@@ -8,6 +12,7 @@ mod forwarder;
 mod http;
 mod k8s;
 mod logger;
+mod tui;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -51,15 +56,28 @@ struct Args {
     /// Verbosity level for requests log file (0-3)
     #[arg(long, default_value = "1")]
     requests_log_verbosity: u8,
+    /// Use CLI mode instead of TUI
+    #[arg(long, default_value_t = false)]
+    cli_mode: bool,
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<()> {
     let args = Args::parse();
     
     // Initialize logger with verbosity level
     logger::init(args.verbose);
     
+    if args.cli_mode {
+        // Run in CLI mode (original behavior)
+        run_cli_mode(args).await
+    } else {
+        // Run in TUI mode
+        run_tui_mode(args).await
+    }
+}
+
+async fn run_cli_mode(args: Args) -> Result<()> {
     // Print startup banner
     cli::print_startup_banner();
     
@@ -68,17 +86,12 @@ async fn main() -> anyhow::Result<()> {
     
     if let Some(config_path) = args.config {
         // Load config file and start multiple port-forwards
-        // Load config file and start multiple port-forwards
         let mut config = config::load_config(config_path)?;
         config.verbose = Some(args.verbose);
         forwarder::start_from_config(config, args.show_liveness, args.requests_log_file, args.requests_log_verbosity).await?;
     } else if let Some(resource_str) = args.resource {
         // Parse resource string and start single port-forward
         let (resource_type, resource_name, resource_port) = k8s::parse_resource(&resource_str)?;
-        // If local_port is not specified, try finding an available one.
-        // If that fails, default to resource_port.
-        // Note: find_available_port might not be defined yet, assuming it exists or will be added.
-        // For now, let's keep the original logic of defaulting to resource_port if None.
         let local_port = args.local_port.unwrap_or(resource_port);
         
         println!("{} Forwarding {} {}/{} port {} via HTTP proxy on port {}",
@@ -102,6 +115,132 @@ async fn main() -> anyhow::Result<()> {
             args.requests_log_file,
             args.requests_log_verbosity,
         ).await?;
+    }
+    
+    Ok(())
+}
+
+async fn run_tui_mode(args: Args) -> Result<()> {
+    // Set up the terminal
+    let mut terminal = tui::setup_terminal()?;
+    
+    // Create a channel for logging
+    let (log_sender, log_receiver) = tui::create_log_channel();
+    
+    // Create the app state
+    let mut app = tui::App::new(log_receiver);
+    
+    // Spawn a thread to handle the port forwarding
+    let args_clone = args.clone();
+    let log_sender_clone = log_sender.clone();
+    let port_forward_handle = tokio::spawn(async move {
+        // Log startup information
+        log_sender_clone.send(tui::LogEntry {
+            timestamp: chrono::Utc::now(),
+            message: "🚀 Kubernetes port-forward utility".to_string(),
+            level: tui::LogLevel::Info,
+        }).unwrap();
+        
+        log_sender_clone.send(tui::LogEntry {
+            timestamp: chrono::Utc::now(),
+            message: format!("🔊 Verbosity level: {}", args_clone.verbose),
+            level: tui::LogLevel::Info,
+        }).unwrap();
+        
+        // Start the port forwarding based on args
+        if let Some(config_path) = args_clone.config {
+            // Load config file and start multiple port-forwards
+            match config::load_config(config_path) {
+                Ok(mut config) => {
+                    config.verbose = Some(args_clone.verbose);
+                    
+                    log_sender_clone.send(tui::LogEntry {
+                        timestamp: chrono::Utc::now(),
+                        message: format!("📋 Starting {} port-forwards from config", config.forwards.len()),
+                        level: tui::LogLevel::Info,
+                    }).unwrap();
+                    
+                    if let Err(e) = forwarder::start_from_config(
+                        config, 
+                        args_clone.show_liveness, 
+                        args_clone.requests_log_file, 
+                        args_clone.requests_log_verbosity
+                    ).await {
+                        log_sender_clone.send(tui::LogEntry {
+                            timestamp: chrono::Utc::now(),
+                            message: format!("❌ Error starting port-forwards: {}", e),
+                            level: tui::LogLevel::Error,
+                        }).unwrap();
+                    }
+                }
+                Err(e) => {
+                    log_sender_clone.send(tui::LogEntry {
+                        timestamp: chrono::Utc::now(),
+                        message: format!("❌ Failed to load config: {}", e),
+                        level: tui::LogLevel::Error,
+                    }).unwrap();
+                }
+            }
+        } else if let Some(resource_str) = args_clone.resource {
+            // Parse resource string and start single port-forward
+            match k8s::parse_resource(&resource_str) {
+                Ok((resource_type, resource_name, resource_port)) => {
+                    let local_port = args_clone.local_port.unwrap_or(resource_port);
+                    
+                    log_sender_clone.send(tui::LogEntry {
+                        timestamp: chrono::Utc::now(),
+                        message: format!("📡 Forwarding {}/{} port {} via HTTP proxy on port {}", 
+                            resource_type, resource_name, resource_port, local_port),
+                        level: tui::LogLevel::Info,
+                    }).unwrap();
+                    
+                    if let Err(e) = forwarder::start_single(
+                        resource_type,
+                        resource_name,
+                        resource_port,
+                        args_clone.namespace,
+                        local_port,
+                        args_clone.verbose,
+                        args_clone.timeout,
+                        args_clone.liveness_probe,
+                        args_clone.show_liveness,
+                        args_clone.requests_log_file,
+                        args_clone.requests_log_verbosity,
+                    ).await {
+                        log_sender_clone.send(tui::LogEntry {
+                            timestamp: chrono::Utc::now(),
+                            message: format!("❌ Error starting port-forward: {}", e),
+                            level: tui::LogLevel::Error,
+                        }).unwrap();
+                    }
+                }
+                Err(e) => {
+                    log_sender_clone.send(tui::LogEntry {
+                        timestamp: chrono::Utc::now(),
+                        message: format!("❌ Failed to parse resource: {}", e),
+                        level: tui::LogLevel::Error,
+                    }).unwrap();
+                }
+            }
+        } else {
+            log_sender_clone.send(tui::LogEntry {
+                timestamp: chrono::Utc::now(),
+                message: "❌ No resource or config specified".to_string(),
+                level: tui::LogLevel::Error,
+            }).unwrap();
+        }
+    });
+    
+    // Run the app
+    let tick_rate = Duration::from_millis(100);
+    let res = tui::run_app(&mut terminal, &mut app, tick_rate);
+    
+    // Restore terminal
+    tui::restore_terminal(&mut terminal)?;
+    
+    // Handle any errors from the app
+    if let Err(err) = res {
+        println!("Error: {}", err);
     }
     
     Ok(())
