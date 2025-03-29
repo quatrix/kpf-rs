@@ -140,11 +140,9 @@ pub fn run_app(
 
     loop {
         let size = terminal.size()?;
-        let inner_width = size.width.saturating_sub(2) as usize;
-        let inner_height = size.height.saturating_sub(2) as usize;
-        let wrapped_lines = get_wrapped_lines(app, inner_width);
-        let max_scroll = if wrapped_lines.len() > inner_height {
-            wrapped_lines.len().saturating_sub(inner_height)
+        let available_height = if size.height > 2 { size.height - 2 } else { size.height } as usize;
+        let max_scroll = if app.logs.len() > available_height {
+            app.logs.len() - available_height
         } else {
             0
         };
@@ -212,95 +210,51 @@ pub fn run_app(
 }
 
 fn ui(f: &mut Frame, app: &App) {
-    let size = f.size();
+    let area = f.size();
+    render_logs_panel(f, app, area);
+}
 
-    // Define inner area dimensions (accounting for borders)
-    let inner_height = if size.height > 2 { size.height - 2 } else { size.height } as usize;
-    let inner_width = if size.width > 2 { size.width - 2 } else { size.width } as usize;
-
-    // Create a header with auto/manual scroll status
-    let title = if app.auto_scroll {
-        " Logs (Auto Scroll) "
-    } else {
-        " Logs (Manual Scroll) "
-    };
-    let logs_block = Block::default()
-        .title(title)
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Cyan))
-        .title_alignment(Alignment::Left);
-
-    // Wrap log messages and build display lines
-    let mut wrapped_lines = Vec::new();
-    for log in &app.logs {
-        let ts = log.timestamp.format("%H:%M:%S").to_string();
-        let prefix = format!("[{}] ", ts);
-        let prefix_width = prefix.chars().count();
-        let indent = " ".repeat(prefix_width);
-        let wrap_options = Options::new(inner_width)
-            .initial_indent("")
-            .subsequent_indent(&indent);
-        let wrapped = textwrap::wrap(&log.message, wrap_options);
+fn render_logs_panel(f: &mut Frame, app: &App, area: Rect) {
+    // Build log lines with timestamp prefixes and colored messages
+    let log_lines: Vec<Spans> = app.logs.iter().map(|log| {
+        let time = log.timestamp.format("%H:%M:%S").to_string();
+        let prefix = format!("[{}] ", time);
         let color = match log.level {
             LogLevel::Info => Color::Cyan,
             LogLevel::Success => Color::Green,
             LogLevel::Warning => Color::Yellow,
             LogLevel::Error => Color::Red,
         };
-        if !wrapped.is_empty() {
-            wrapped_lines.push(Line::from(vec![
-                Span::styled(prefix.clone(), Style::default().fg(Color::DarkGray)),
-                Span::styled(wrapped[0].clone(), Style::default().fg(color)),
-            ]));
-            for line in wrapped.iter().skip(1) {
-                wrapped_lines.push(Line::from(vec![
-                    Span::styled(" ".repeat(prefix_width), Style::default()),
-                    Span::styled(line.clone(), Style::default().fg(color)),
-                ]));
-            }
-        } else {
-            wrapped_lines.push(Line::from(vec![
-                Span::styled(prefix, Style::default().fg(Color::DarkGray)),
-            ]));
-        }
-    }
+        Spans::from(vec![
+            Span::styled(prefix, Style::default().fg(Color::DarkGray)),
+            Span::styled(&log.message, Style::default().fg(color)),
+        ])
+    }).collect();
 
-    // Determine scroll offset based on auto-scroll or manual control
-    let total_lines = wrapped_lines.len();
-    let max_scroll = if total_lines > inner_height { total_lines - inner_height } else { 0 };
-    let scroll_offset = if app.auto_scroll {
-        max_scroll
+    // Determine available height and compute scroll offset
+    let available_height = if area.height > 2 { area.height - 2 } else { area.height } as usize;
+    let total_lines = log_lines.len();
+    let scroll = if app.auto_scroll {
+        total_lines.saturating_sub(available_height)
     } else {
-        app.scroll.min(max_scroll)
+        app.scroll.min(total_lines.saturating_sub(available_height))
     };
 
-    // Slice the wrapped lines to get visible portion
-    let visible_lines: Vec<Line> = wrapped_lines
-        .iter()
-        .skip(scroll_offset)
-        .take(inner_height)
+    let visible_lines: Vec<Spans> = log_lines.iter()
+        .skip(scroll)
+        .take(available_height)
         .cloned()
         .collect();
 
-    // Create and render the Paragraph widget
-    let paragraph = Paragraph::new(visible_lines)
-        .block(logs_block);
-    f.render_widget(paragraph, size);
+    let block = Block::default()
+        .title(if app.auto_scroll { "Logs (Auto Scroll)" } else { "Logs (Manual Scroll)" })
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Cyan));
 
-    // Display scroll indicator if in manual scroll mode
-    if !app.auto_scroll && total_lines > inner_height {
-        let percent = if max_scroll > 0 { (scroll_offset * 100) / max_scroll } else { 100 };
-        let indicator = format!(" {}% ", percent);
-        let ind_rect = Rect {
-            x: size.x + size.width - indicator.len() as u16 - 1,
-            y: size.y,
-            width: indicator.len() as u16,
-            height: 1,
-        };
-        let ind_paragraph = Paragraph::new(indicator)
-            .style(Style::default().bg(Color::Cyan).fg(Color::Black));
-        f.render_widget(ind_paragraph, ind_rect);
-    }
+    let paragraph = Paragraph::new(visible_lines)
+        .block(block)
+        .wrap(Wrap { trim: true });
+    f.render_widget(paragraph, area);
 }
 
 pub fn setup_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>> {
@@ -337,39 +291,3 @@ pub fn spawn_log_collector(_log_sender: mpsc::Sender<LogEntry>) -> thread::JoinH
     })
 }
 
-fn get_wrapped_lines(app: &App, inner_width: usize) -> Vec<Line> {
-    let mut wrapped_lines = Vec::new();
-    for log in &app.logs {
-        let timestamp = log.timestamp.format("%H:%M:%S").to_string();
-        let timestamp_prefix = format!("[{}] ", timestamp);
-        let prefix_width = timestamp_prefix.chars().count();
-        let indent = " ".repeat(prefix_width);
-        let wrap_options = Options::new(inner_width)
-            .initial_indent("")
-            .subsequent_indent(&indent);
-        let wrapped_message = textwrap::wrap(&log.message, wrap_options);
-        let color = match log.level {
-            LogLevel::Info => Color::Cyan,
-            LogLevel::Success => Color::Green,
-            LogLevel::Warning => Color::Yellow,
-            LogLevel::Error => Color::Red,
-        };
-        if !wrapped_message.is_empty() {
-            wrapped_lines.push(Line::from(vec![
-                Span::styled(timestamp_prefix.clone(), Style::default().fg(Color::DarkGray)),
-                Span::styled(wrapped_message[0].clone(), Style::default().fg(color)),
-            ]));
-            for line in wrapped_message.iter().skip(1) {
-                wrapped_lines.push(Line::from(vec![
-                    Span::styled(" ".repeat(prefix_width), Style::default()),
-                    Span::styled(line.clone(), Style::default().fg(color)),
-                ]));
-            }
-        } else {
-            wrapped_lines.push(Line::from(vec![
-                Span::styled(timestamp_prefix.clone(), Style::default().fg(Color::DarkGray)),
-            ]));
-        }
-    }
-    wrapped_lines
-}
