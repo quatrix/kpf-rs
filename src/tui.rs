@@ -454,30 +454,71 @@ fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect, _viewport_height:
         } else if is_search_result {
             search_highlight_style
         } else {
-            base_style // Fallback to level-based color if not a search result
+            base_style // Base style determined by log level
         };
 
-        // Split message into lines and apply styling
+        // Function to create spans for a single line, highlighting search terms
+        let create_line_spans = |line_content: &str, style: Style, highlight_style: Style| -> Vec<Span> {
+            let mut spans = Vec::new();
+            if app.search_query.is_empty() || !line_content.contains(&app.search_query) {
+                // No search query or no match in this line, return single span
+                spans.push(Span::styled(line_content.to_string(), style));
+            } else {
+                // Highlight matches
+                let mut last_index = 0;
+                for (start, part) in line_content.match_indices(&app.search_query) {
+                    if start > last_index {
+                        spans.push(Span::styled(
+                            &line_content[last_index..start],
+                            style,
+                        ));
+                    }
+                    spans.push(Span::styled(part, highlight_style));
+                    last_index = start + part.len();
+                }
+                if last_index < line_content.len() {
+                    spans.push(Span::styled(&line_content[last_index..], style));
+                }
+            }
+            spans
+        };
+
+        // Determine the highlight style to use for matches *on this specific log line*
+        let match_highlight_style = if is_current_match {
+            current_match_highlight_style
+        } else {
+            search_highlight_style
+        };
+
+        // Split message into lines and apply styling with search highlighting
         let message_lines: Vec<&str> = log.message.split('\n').collect();
+
         if message_lines.is_empty() || (message_lines.len() == 1 && message_lines[0].is_empty()) {
-            // Handle empty log messages
-            log_lines.push(Line::from(vec![Span::styled(
+            // Handle potentially empty log messages
+             log_lines.push(Line::from(vec![Span::styled(
                 prefix.clone(),
-                Style::default().fg(Color::DarkGray), // Timestamp prefix style
+                Style::default().fg(Color::DarkGray),
             )]));
         } else {
             // First line with timestamp
-            log_lines.push(Line::from(vec![
-                Span::styled(prefix.clone(), Style::default().fg(Color::DarkGray)),
-                Span::styled(message_lines[0].to_string(), line_style), // Apply highlight/base style
-            ]));
+            let mut first_line_spans = vec![Span::styled(prefix.clone(), Style::default().fg(Color::DarkGray))];
+            first_line_spans.extend(create_line_spans(
+                message_lines[0],
+                base_style,
+                match_highlight_style,
+            ));
+            log_lines.push(Line::from(first_line_spans));
+
             // Subsequent lines indented
-            let indent = " ".repeat(prefix_width); // Use spaces for indent
+            let indent_str = " ".repeat(prefix_width); // Use spaces for indent
             for line_content in message_lines.iter().skip(1) {
-                log_lines.push(Line::from(vec![
-                    Span::raw(indent.clone()),
-                    Span::styled(line_content.to_string(), line_style), // Apply same style
-                ]));
+                 let mut subsequent_line_spans = vec![Span::raw(indent_str.clone())];
+                 subsequent_line_spans.extend(create_line_spans(
+                    line_content,
+                    base_style,
+                    match_highlight_style,
+                 ));
+                 log_lines.push(Line::from(subsequent_line_spans));
             }
         }
     }
