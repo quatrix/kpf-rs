@@ -288,15 +288,17 @@ fn render_status_panel(f: &mut Frame, app: &mut App, area: Rect) {
             Cell::from(st.last_probe.clone().unwrap_or_else(|| "N/A".to_string())),
         ])
     }).collect();
-    let table = Table::new(rows)
-        .header(header)
-        .block(Block::default().title("Status").borders(Borders::ALL).border_style(Style::default().fg(Color::Magenta)))
-        .widths(&[
+    let table = Table::new(
+        rows,
+        &[
             Constraint::Percentage(40),
             Constraint::Length(10),
             Constraint::Length(12),
             Constraint::Percentage(38),
-        ]);
+        ]
+    )
+    .header(header)
+    .block(Block::default().title("Status").borders(Borders::ALL).border_style(Style::default().fg(Color::Magenta)));
     f.render_widget(table, area);
 }
 
