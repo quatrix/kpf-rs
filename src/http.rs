@@ -188,7 +188,7 @@ async fn proxy_request(
         }
         Err(e) => {
             let error_msg = format!("Failed to forward request: {}", e);
-            cli::print_error(&error_msg);
+            crate::logger::log_error(error_msg);
             
             let mut response = Response::new(Body::from(error_msg));
             *response.status_mut() = StatusCode::BAD_GATEWAY;

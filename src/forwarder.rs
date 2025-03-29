@@ -144,17 +144,17 @@ pub async fn start_single(
                     );
                     
                     if let Err(e) = result {
-                        cli::print_error(&format!("Port-forward failed: {}", e));
+                        crate::logger::log_error(format!("Port-forward failed: {}", e));
                     }
                     
                     // Reset attempt counter on successful connection
                     attempt = 0;
                 }
                 Err(e) => {
-                    cli::print_error(&format!("Failed to create port-forward: {}", e));
+                    crate::logger::log_error(format!("Failed to create port-forward: {}", e));
                     
                     if attempt >= MAX_RETRY_ATTEMPTS {
-                        cli::print_error(&format!("Max retry attempts ({}) reached, giving up", MAX_RETRY_ATTEMPTS));
+                        crate::logger::log_error(format!("Max retry attempts ({}) reached, giving up", MAX_RETRY_ATTEMPTS));
                         break;
                     }
                 }
@@ -208,7 +208,7 @@ pub async fn start_from_config(config: Config, show_liveness: bool, requests_log
                 (*requests_log_file_clone).clone(),
                 requests_log_verbosity,
             ).await {
-                cli::print_error(&format!("Forward failed: {}", e));
+                crate::logger::log_error(format!("Forward failed: {}", e));
             }
         });
         
