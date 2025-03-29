@@ -197,7 +197,7 @@ pub fn run_app(
                             app.scroll_up();
                         }
                         KeyCode::Down => {
-                            app.scroll_down(max_scroll);
+                            app.scroll_down();
                         }
                         KeyCode::PageUp => {
                             let page_size = terminal.size()?.height as usize / 2;
@@ -217,7 +217,7 @@ pub fn run_app(
                             app.toggle_auto_scroll();
                         }
                         KeyCode::Char('j') => {
-                            app.scroll_down(max_scroll);
+                            app.scroll_down();
                         }
                         KeyCode::Char('k') => {
                             app.scroll_up();
