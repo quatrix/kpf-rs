@@ -158,45 +158,40 @@ pub fn run_app(
 
         if crossterm::event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
-                if key.kind == KeyEventKind::Press {
-                    match key.code {
-                        KeyCode::Char('q') => {
-                            app.quit();
-                        }
-                        KeyCode::Esc => {
-                            app.quit();
-                        }
-                        KeyCode::Up => {
-                            app.scroll_up();
-                        }
-                        KeyCode::Down => {
-                            app.scroll_down(max_scroll);
-                        }
-                        KeyCode::PageUp => {
-                            let page_size = terminal.size()?.height as usize / 2;
-                            app.page_up(page_size);
-                        }
-                        KeyCode::PageDown => {
-                            let page_size = terminal.size()?.height as usize / 2;
-                            app.page_down(page_size, max_scroll);
-                        }
-                        KeyCode::Home => {
-                            app.scroll_to_top();
-                        }
-                        KeyCode::End => {
-                            app.scroll_to_bottom();
-                        }
-                        KeyCode::Char('a') => {
-                            app.toggle_auto_scroll();
-                        }
-                        KeyCode::Char('j') => {
-                            app.scroll_down(max_scroll);
-                        }
-                        KeyCode::Char('k') => {
-                            app.scroll_up();
-                        }
-                        _ => {}
+                match key.code {
+                    KeyCode::Char('q') | KeyCode::Esc => {
+                        app.quit();
                     }
+                    KeyCode::Up => {
+                        app.scroll_up();
+                    }
+                    KeyCode::Down => {
+                        app.scroll_down(max_scroll);
+                    }
+                    KeyCode::PageUp => {
+                        let page_size = terminal.size()?.height as usize / 2;
+                        app.page_up(page_size);
+                    }
+                    KeyCode::PageDown => {
+                        let page_size = terminal.size()?.height as usize / 2;
+                        app.page_down(page_size, max_scroll);
+                    }
+                    KeyCode::Home => {
+                        app.scroll_to_top();
+                    }
+                    KeyCode::End => {
+                        app.scroll_to_bottom();
+                    }
+                    KeyCode::Char('a') => {
+                        app.toggle_auto_scroll();
+                    }
+                    KeyCode::Char('j') => {
+                        app.scroll_down(max_scroll);
+                    }
+                    KeyCode::Char('k') => {
+                        app.scroll_up();
+                    }
+                    _ => {}
                 }
             }
         }
