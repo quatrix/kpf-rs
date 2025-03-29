@@ -6,7 +6,7 @@ use crossterm::{
 };
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Paragraph, Wrap, Scrollbar, ScrollbarOrientation, ScrollbarState},
+    widgets::{Block, Borders, Paragraph, Wrap, Scrollbar, ScrollbarOrientation, ScrollbarState, Clear},
     Frame,
     text::{Span, Line},
 };
@@ -208,6 +208,7 @@ pub fn run_app(
 }
 
 fn ui(f: &mut Frame, app: &mut App) {
+    f.render_widget(Clear, f.size());
     let area = f.size();
     render_logs_panel(f, app, area);
 }
