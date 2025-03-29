@@ -144,14 +144,16 @@ async fn proxy_request(
                     .unwrap_or(false);
                 let computed_resp_body = if let Ok(json_str) = String::from_utf8(bytes.to_vec()) {
                     if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(&json_str) {
-                        if content_type_json {
+                        if verbose >= 3 {
+                            serde_json::to_string_pretty(&json_value).unwrap_or(json_str)
+                        } else if content_type_json {
                             if requests_log_file.is_some() {
                                 serde_json::to_string(&json_value).unwrap_or(json_str)
                             } else {
                                 serde_json::to_string_pretty(&json_value).unwrap_or(json_str)
                             }
                         } else {
-                            serde_json::to_string_pretty(&json_value).unwrap_or(json_str)
+                            json_str
                         }
                     } else {
                         format!("Binary data: {} bytes", body_clone.len())
