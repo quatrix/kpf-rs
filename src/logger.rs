@@ -69,7 +69,7 @@ pub fn log_info(message: String) {
                 Err(e) => eprintln!("Failed to send log to TUI: {}", e),
             }
         } else {
-            println!("{} {}", "ℹ️".bright_cyan(), message);
+            println!("{} {}", "ℹ️", message);
         }
     }
 }
@@ -96,7 +96,7 @@ pub fn log_success(message: String) {
                 Err(e) => eprintln!("Failed to send log to TUI: {}", e),
             }
         } else {
-            println!("{} {}", "✅".bright_green(), message);
+            println!("{} {}", "✅", message);
         }
     }
 }
@@ -123,7 +123,7 @@ pub fn log_warning(message: String) {
                 Err(e) => eprintln!("Failed to send log to TUI: {}", e),
             }
         } else {
-            println!("{} {}", "⚠️".bright_yellow(), message);
+            println!("{} {}", "⚠️", message);
         }
     }
 }
@@ -150,7 +150,7 @@ pub fn log_error(message: String) {
                 Err(e) => eprintln!("Failed to send log to TUI: {}", e),
             }
         } else {
-            eprintln!("{} {}", "❌".bright_red(), message);
+            eprintln!("{} {}", "❌", message);
         }
     }
 }

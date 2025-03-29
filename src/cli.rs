@@ -4,11 +4,11 @@ use crate::logger;
 pub fn print_startup_banner() {
     let banner = format!(
         "{}\n{} {}                                  {}\n{}",
-        "╔════════════════════════════════════════════╗".bright_blue(),
-        "║".bright_blue(),
-        "🚀 K8s Port Forward".bright_green(),
-        "║".bright_blue(),
-        "╚════════════════════════════════════════════╝".bright_blue()
+        "╔════════════════════════════════════════════╗",
+        "║",
+        "🚀 K8s Port Forward",
+        "║",
+        "╚════════════════════════════════════════════╝"
     );
     
     logger::log_info(banner);
@@ -16,17 +16,17 @@ pub fn print_startup_banner() {
 
 pub fn print_forwarding_status(resource: &str, local_port: u16, remote_port: u16, alive: bool) {
     let status = if alive {
-        "✅ CONNECTED".bright_green()
+        "✅ CONNECTED"
     } else {
-        "❌ DISCONNECTED".bright_red()
+        "❌ DISCONNECTED"
     };
 
     let message = format!(
         "{} Port forward {} → {} {} ({})",
-        "🔄".cyan(),
-        local_port.to_string().bright_green(),
-        remote_port.to_string().bright_yellow(),
-        resource.bright_blue(),
+        "🔄",
+        local_port.to_string(),
+        remote_port.to_string(),
+        resource,
         status
     );
     
@@ -44,8 +44,8 @@ pub fn print_error(message: &str) {
 pub fn print_retry(attempt: u32, max_attempts: u32) {
     let message = format!(
         "{} Retrying connection ({}/{})",
-        "🔄".yellow(),
-        attempt.to_string().bright_yellow(),
+        "🔄",
+        attempt.to_string(),
         max_attempts.to_string()
     );
     
