@@ -15,12 +15,12 @@ use std::net::TcpListener;
 
 fn find_available_port() -> Result<u16> {
     // Bind to port 0 to get an available port from the OS
-    let listener = TcpListener::bind("127.0.0.1:0")
-        .context("Failed to bind to random port")?;
-    let port = listener.local_addr()
+    let listener = TcpListener::bind("127.0.0.1:0").context("Failed to bind to random port")?;
+    let port = listener
+        .local_addr()
         .context("Failed to get local address")?
         .port();
-    
+
     Ok(port)
 }
 
@@ -44,65 +44,108 @@ pub async fn start_single(
 
     // Find an available port for the internal port-forward
     let internal_port = find_available_port()?;
-    crate::logger::log_info(format!("{} Using internal port {} for port-forward", "🔌", internal_port));
+    crate::logger::log_info(format!(
+        "{} Using internal port {} for port-forward",
+        "🔌", internal_port
+    ));
 
     // Start HTTP server on the user-specified port
     let resource_prefix = format!("{}/{}:{}", resource_type, resource_name, resource_port);
     let http_handle = tokio::spawn(async move {
-        start_http_server(local_port, internal_port, port_forward_status_clone, verbose, show_liveness, resource_prefix, requests_log_file.clone(), requests_log_verbosity).await
+        start_http_server(
+            local_port,
+            internal_port,
+            port_forward_status_clone,
+            verbose,
+            show_liveness,
+            resource_prefix,
+            requests_log_file.clone(),
+            requests_log_verbosity,
+        )
+        .await
     });
 
     // Start port-forward manager
     let k8s_handle = tokio::spawn(async move {
         let mut attempt = 0;
-        
+
         loop {
             attempt += 1;
             if attempt > 1 {
                 sleep(Duration::from_millis(RETRY_DELAY_MS)).await;
             }
-            
-            match create_port_forward(&resource_type, &resource_name, resource_port, internal_port, &namespace, child_handle.clone()).await {
+
+            match create_port_forward(
+                &resource_type,
+                &resource_name,
+                resource_port,
+                internal_port,
+                &namespace,
+                child_handle.clone(),
+            )
+            .await
+            {
                 Ok(pf) => {
                     {
                         let mut status = port_forward_status.lock().unwrap();
                         *status = true;
-                        crate::logger::log_info(format!("{} Port-forward status set to ACTIVE (PID: {})", 
-                            "🔄", 
-                            std::process::id()));
+                        crate::logger::log_info(format!(
+                            "{} Port-forward status set to ACTIVE (PID: {})",
+                            "🔄",
+                            std::process::id()
+                        ));
                     }
-                    
-                    
-                    crate::logger::log_info(format!("{} HTTP proxy listening on port {} and forwarding to internal port {}", 
-                        "🔄", 
-                        local_port.to_string(),
-                        internal_port.to_string()));
-                    
-                    crate::logger::log_info(format!("{} Port-forward active, waiting for connection to establish...", "🔄"));
-                    
+
+                    crate::logger::log_info(format!(
+                        "{} HTTP proxy listening on port {} and forwarding to internal port {}",
+                        "🔄", local_port, internal_port
+                    ));
+
+                    crate::logger::log_info(format!(
+                        "{} Port-forward active, waiting for connection to establish...",
+                        "🔄"
+                    ));
+
                     // Add a small delay to ensure the port-forward is fully established
                     sleep(Duration::from_millis(500)).await;
-                    
-                    crate::logger::log_success(format!("{} Port-forward ready to accept connections", "✅"));
-                    
+
+                    crate::logger::log_success(format!(
+                        "{} Port-forward ready to accept connections",
+                        "✅"
+                    ));
+
                     let pf_future = pf;
                     let result = if let Some(probe_path) = liveness_probe.clone() {
-                        use hyper::{Client, Request, Body, StatusCode};
+                        use hyper::{Body, Client, Request, StatusCode};
                         let liveness_future = async {
                             loop {
                                 sleep(Duration::from_secs(5)).await;
                                 let client = Client::new();
-                                let url = format!("http://127.0.0.1:{}{}", internal_port, probe_path);
-                                let req = Request::get(url).header("x-internal-probe", "true").body(Body::empty()).unwrap();
-                                let timeout_duration = std::time::Duration::from_secs(timeout.unwrap_or(3));
-                                let res = tokio::time::timeout(timeout_duration, client.request(req)).await;
+                                let url =
+                                    format!("http://127.0.0.1:{}{}", internal_port, probe_path);
+                                let req = Request::get(url)
+                                    .header("x-internal-probe", "true")
+                                    .body(Body::empty())
+                                    .unwrap();
+                                let timeout_duration =
+                                    std::time::Duration::from_secs(timeout.unwrap_or(3));
+                                let res =
+                                    tokio::time::timeout(timeout_duration, client.request(req))
+                                        .await;
                                 match res {
                                     Ok(Ok(response)) => {
                                         if response.status() != StatusCode::OK {
-                                            break Err(anyhow::anyhow!("Liveness probe returned non-OK status: {}", response.status()));
+                                            break Err(anyhow::anyhow!(
+                                                "Liveness probe returned non-OK status: {}",
+                                                response.status()
+                                            ));
                                         }
                                     }
-                                    _ => break Err(anyhow::anyhow!("Liveness probe request failed or timed out")),
+                                    _ => {
+                                        break Err(anyhow::anyhow!(
+                                            "Liveness probe request failed or timed out"
+                                        ))
+                                    }
                                 }
                             }
                         };
@@ -118,67 +161,78 @@ pub async fn start_single(
                     } else {
                         pf_future.await
                     };
-                    
+
                     {
                         let mut status = port_forward_status.lock().unwrap();
                         *status = false;
-                        crate::logger::log_warning(format!("{} Port-forward status set to INACTIVE (PID: {})", 
-                            "🔄", 
-                            std::process::id()));
+                        crate::logger::log_warning(format!(
+                            "{} Port-forward status set to INACTIVE (PID: {})",
+                            "🔄",
+                            std::process::id()
+                        ));
                     }
-                    
-                    
+
                     if let Err(e) = result {
                         crate::logger::log_error(format!("Port-forward failed: {}", e));
                     }
-                    
+
                     // Reset attempt counter on successful connection
                     attempt = 0;
                 }
                 Err(e) => {
                     crate::logger::log_error(format!("Failed to create port-forward: {}", e));
-                    
+
                     if attempt >= MAX_RETRY_ATTEMPTS {
-                        crate::logger::log_error(format!("Max retry attempts ({}) reached, giving up", MAX_RETRY_ATTEMPTS));
+                        crate::logger::log_error(format!(
+                            "Max retry attempts ({}) reached, giving up",
+                            MAX_RETRY_ATTEMPTS
+                        ));
                         break;
                     }
                 }
             }
         }
-        
+
         // Signal HTTP server to shut down
         let _ = tx.send(true).await;
     });
 
     // Wait for shutdown signal
-    if let Some(_) = rx.recv().await {
+    if (rx.recv().await).is_some() {
         crate::logger::log_warning(format!("{} Shutting down...", "🛑"));
     }
 
     // Wait for tasks to complete
     let _ = tokio::join!(http_handle, k8s_handle);
-    
+
     Ok(())
 }
 
-pub async fn start_from_config(config: Config, show_liveness: bool, requests_log_file: Option<std::path::PathBuf>, requests_log_verbosity: u8) -> Result<()> {
+pub async fn start_from_config(
+    config: Config,
+    show_liveness: bool,
+    requests_log_file: Option<std::path::PathBuf>,
+    requests_log_verbosity: u8,
+) -> Result<()> {
     let verbose = config.verbose.unwrap_or(1);
     let mut handles = Vec::new();
-    
-    crate::logger::log_info(format!("{} Starting {} port-forwards from config", 
-        "📋".bright_cyan(), 
-        config.forwards.len().to_string().bright_yellow()));
-    
+
+    crate::logger::log_info(format!(
+        "{} Starting {} port-forwards from config",
+        "📋",
+        config.forwards.len()
+    ));
+
     let requests_log_file_arc = std::sync::Arc::new(requests_log_file.clone());
-    
+
     for forward in config.forwards {
         let requests_log_file_clone = requests_log_file_arc.clone();
         let (resource_type, resource_name, resource_port) = parse_resource(&forward.resource)
             .context(format!("Failed to parse resource: {}", forward.resource))?;
-        
+
         let ns = forward.namespace.unwrap_or_else(|| "default".to_string());
         let local_port = forward.local_port.unwrap_or(resource_port);
-        
+
         let handle = tokio::spawn(async move {
             if let Err(e) = start_single(
                 resource_type,
@@ -192,16 +246,18 @@ pub async fn start_from_config(config: Config, show_liveness: bool, requests_log
                 show_liveness,
                 (*requests_log_file_clone).clone(),
                 requests_log_verbosity,
-            ).await {
+            )
+            .await
+            {
                 crate::logger::log_error(format!("Forward failed: {}", e));
             }
         });
-        
+
         handles.push(handle);
     }
-    
+
     // Wait for all forwards to complete
     join_all(handles).await;
-    
+
     Ok(())
 }
