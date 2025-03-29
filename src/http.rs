@@ -123,14 +123,14 @@ async fn proxy_request(
                     101..=300 => format!("{}ms", ms).bright_yellow(),
                     _ => format!("{}ms", ms).bright_red(),
                 };
-                println!("{} {} - {} {} → {} ({})",
+                crate::logger::log_success(format!("{} {} - {} {} → {} ({})",
                     "✓".bright_green(),
                     resource,
                     colored_method,
                     path,
                     status_colored,
                     duration_colored
-                );
+                ));
             }
             let (response, opt_resp_body) = if verbose >= 3 || (requests_log_file.is_some() && requests_log_verbosity >= 3) {
                 let (parts, body) = response.into_parts();
