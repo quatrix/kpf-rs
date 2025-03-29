@@ -13,6 +13,7 @@ use std::io;
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
+use textwrap::{self, Options};
 
 pub struct LogEntry {
     pub timestamp: chrono::DateTime<chrono::Utc>,
@@ -108,9 +109,9 @@ impl App {
 
     pub fn scroll_to_bottom(&mut self) {
         if !self.logs.is_empty() {
-            // Set scroll to the maximum possible value
-            // This will be adjusted in the UI rendering to ensure we're at the bottom
-            self.scroll = self.logs.len().saturating_sub(1);
+            // Set scroll to a very large value
+            // This will be capped to the maximum valid scroll position in the UI rendering
+            self.scroll = usize::MAX / 2; // Using a large value that will be capped
         } else {
             self.scroll = 0;
         }
@@ -138,11 +139,9 @@ pub fn run_app(
     let mut last_tick = Instant::now();
 
     loop {
-        // Calculate the maximum scroll position based on the current terminal size
-        let max_scroll = {
-            let size = terminal.size()?;
-            app.logs.len().saturating_sub(size.height as usize - 2) // -2 for borders
-        };
+        // We'll calculate the max scroll position inside the UI rendering function
+        // since it depends on the wrapped lines which are calculated there
+        let max_scroll = usize::MAX / 2; // Using a large value that will be capped
 
         terminal.draw(|f| ui(f, app))?;
 
@@ -218,39 +217,64 @@ fn ui(f: &mut Frame, app: &App) {
 
     // Calculate visible area
     let inner_height = size.height.saturating_sub(2) as usize; // -2 for borders
+    let inner_width = size.width.saturating_sub(2) as usize; // -2 for borders
 
-    // Create the full log text for all logs
-    let log_text = app.logs.iter()
-        .map(|log| {
-            let timestamp = log.timestamp.format("%H:%M:%S").to_string();
-            let color = match log.level {
-                LogLevel::Info => Color::Cyan,
-                LogLevel::Success => Color::Green,
-                LogLevel::Warning => Color::Yellow,
-                LogLevel::Error => Color::Red,
-            };
-            Line::from(vec![
-                Span::styled(
-                    format!("[{}] ", timestamp),
-                    Style::default().fg(Color::DarkGray),
-                ),
-                Span::styled(log.message.clone(), Style::default().fg(color)),
-            ])
-        })
-        .collect::<Vec<Line>>();
+    // Process logs with textwrap
+    let mut wrapped_lines: Vec<Line> = Vec::new();
+    
+    for log in &app.logs {
+        let timestamp = log.timestamp.format("%H:%M:%S").to_string();
+        let color = match log.level {
+            LogLevel::Info => Color::Cyan,
+            LogLevel::Success => Color::Green,
+            LogLevel::Warning => Color::Yellow,
+            LogLevel::Error => Color::Red,
+        };
+        
+        // Create the timestamp prefix
+        let timestamp_prefix = format!("[{}] ", timestamp);
+        let prefix_width = timestamp_prefix.chars().count();
+        
+        // Wrap the message text
+        let wrap_options = Options::new(inner_width)
+            .initial_indent("")
+            .subsequent_indent(&" ".repeat(prefix_width));
+        
+        let wrapped_message = textwrap::wrap(&log.message, wrap_options);
+        
+        // Create the first line with timestamp
+        if !wrapped_message.is_empty() {
+            wrapped_lines.push(Line::from(vec![
+                Span::styled(timestamp_prefix, Style::default().fg(Color::DarkGray)),
+                Span::styled(wrapped_message[0].clone(), Style::default().fg(color)),
+            ]));
+            
+            // Add continuation lines if any
+            for line in wrapped_message.iter().skip(1) {
+                wrapped_lines.push(Line::from(vec![
+                    Span::styled(" ".repeat(prefix_width), Style::default()),
+                    Span::styled(line.clone(), Style::default().fg(color)),
+                ]));
+            }
+        } else {
+            // Handle empty messages
+            wrapped_lines.push(Line::from(vec![
+                Span::styled(timestamp_prefix, Style::default().fg(Color::DarkGray)),
+            ]));
+        }
+    }
 
     // Calculate scroll position
-    let scroll_offset = if app.logs.len() > inner_height {
-        let max_scroll = app.logs.len().saturating_sub(inner_height);
+    let scroll_offset = if wrapped_lines.len() > inner_height {
+        let max_scroll = wrapped_lines.len().saturating_sub(inner_height);
         app.scroll.min(max_scroll)
     } else {
         0
     };
 
     // Create a paragraph with the logs and apply scrolling
-    let logs = Paragraph::new(log_text)
+    let logs = Paragraph::new(wrapped_lines)
         .block(logs_block)
-        .wrap(Wrap { trim: false })
         .scroll((scroll_offset as u16, 0));
 
     // Render the logs
