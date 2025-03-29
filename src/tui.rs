@@ -1,6 +1,6 @@
 use anyhow::Result;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -14,7 +14,7 @@ use std::io;
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
-use textwrap::{self, Options};
+use textwrap::{self};
 
 pub struct LogEntry {
     pub timestamp: chrono::DateTime<chrono::Utc>,
@@ -208,7 +208,6 @@ pub fn run_app(
 }
 
 fn ui(f: &mut Frame, app: &mut App) {
-    f.clear();
     let area = f.size();
     render_logs_panel(f, app, area);
 }
