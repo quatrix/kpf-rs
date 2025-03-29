@@ -351,7 +351,7 @@ fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect) {
     } else {
         area.height
     } as usize;
-    let max_scroll = total_lines.saturating_sub(available_height) + 2;
+    let max_scroll = total_lines.saturating_sub(available_height);
     if app.scroll > max_scroll {
         app.scroll = max_scroll;
     }
