@@ -206,7 +206,7 @@ async fn proxy_request(
             if req_body_for_logging.is_some() && method != hyper::Method::GET {
                 crate::logger::log_info(format!(
                     "{} Request body:\n{}",
-                    "📄".bright_blue(),
+                    "📄",
                     req_body_for_logging.unwrap()
                 ));
             }
@@ -214,7 +214,7 @@ async fn proxy_request(
             if let Some(resp_body_str) = opt_resp_body {
                 crate::logger::log_info(format!(
                     "{} Response body:\n{}",
-                    "📄".bright_green(),
+                    "📄",
                     resp_body_str
                 ));
             }
