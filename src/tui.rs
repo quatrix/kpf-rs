@@ -1,6 +1,6 @@
 use anyhow::Result;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -50,6 +50,11 @@ pub struct App {
     log_scroll_state: ScrollbarState,
     awaiting_verbosity_input: bool,
     pub forward_statuses: Vec<ForwardStatus>,
+    // Search state
+    search_mode: bool,
+    search_query: String,
+    search_results: Vec<usize>, // Stores indices of matching log lines
+    current_search_result_index: Option<usize>, // Index into search_results
 }
 
 impl App {
@@ -63,6 +68,11 @@ impl App {
             log_scroll_state: ScrollbarState::default(),
             awaiting_verbosity_input: false,
             forward_statuses: Vec::new(),
+            // Search state init
+            search_mode: false,
+            search_query: String::new(),
+            search_results: Vec::new(),
+            current_search_result_index: None,
         }
     }
 
@@ -142,6 +152,86 @@ impl App {
             self.scroll_to_bottom();
         }
     }
+
+    // --- Search Methods ---
+
+    fn enter_search_mode(&mut self) {
+        self.search_mode = true;
+        self.search_query.clear();
+        self.search_results.clear();
+        self.current_search_result_index = None;
+    }
+
+    fn exit_search_mode(&mut self) {
+        self.search_mode = false;
+        // Keep query and results for 'n'/'N' navigation
+    }
+
+    fn cancel_search(&mut self) {
+        self.search_mode = false;
+        self.search_query.clear();
+        self.search_results.clear();
+        self.current_search_result_index = None;
+    }
+
+    fn update_search_results(&mut self) {
+        self.search_results.clear();
+        self.current_search_result_index = None;
+        if self.search_query.is_empty() {
+            return;
+        }
+        for (index, log_entry) in self.logs.iter().enumerate() {
+            // Simple case-sensitive search for now
+            if log_entry.message.contains(&self.search_query) {
+                self.search_results.push(index);
+            }
+        }
+    }
+
+    fn jump_to_result(&mut self, result_index: usize, viewport_height: usize) {
+        if self.search_results.is_empty() {
+            self.current_search_result_index = None;
+            return;
+        }
+
+        let actual_result_index = result_index % self.search_results.len();
+        self.current_search_result_index = Some(actual_result_index);
+
+        if let Some(log_line_index) = self.search_results.get(actual_result_index) {
+            // Try to center the result line in the viewport
+            let target_scroll = log_line_index.saturating_sub(viewport_height / 2);
+            self.scroll = target_scroll;
+            self.auto_scroll = false; // Disable auto-scroll when jumping
+        }
+    }
+
+    fn jump_to_next_result(&mut self, viewport_height: usize) {
+        if self.search_results.is_empty() {
+            return;
+        }
+        let next_index = match self.current_search_result_index {
+            Some(current) => (current + 1) % self.search_results.len(),
+            None => 0, // Start from the first result if none is selected
+        };
+        self.jump_to_result(next_index, viewport_height);
+    }
+
+    fn jump_to_previous_result(&mut self, viewport_height: usize) {
+        if self.search_results.is_empty() {
+            return;
+        }
+        let prev_index = match self.current_search_result_index {
+            Some(current) => {
+                if current == 0 {
+                    self.search_results.len() - 1
+                } else {
+                    current - 1
+                }
+            }
+            None => 0, // Start from the first result if none is selected
+        };
+        self.jump_to_result(prev_index, viewport_height);
+    }
 }
 
 pub fn run_app(
@@ -152,17 +242,10 @@ pub fn run_app(
     let mut last_tick = Instant::now();
 
     loop {
+        // Calculate viewport height for scrolling/jumping logic BEFORE drawing
         let size = terminal.size()?;
-        let available_height = if size.height > 2 {
-            size.height - 2
-        } else {
-            size.height
-        } as usize;
-        let max_scroll = if app.logs.len() > available_height {
-            app.logs.len() - available_height + 5
-        } else {
-            0
-        };
+        // Assuming status panel (5), command panel (1), and borders (2) for logs panel
+        let log_viewport_height = size.height.saturating_sub(5 + 1 + 2);
 
         terminal.draw(|f| ui(f, app))?;
 
@@ -172,7 +255,29 @@ pub fn run_app(
 
         if crossterm::event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
-                if app.awaiting_verbosity_input {
+                if app.search_mode {
+                    // --- Search Mode Input Handling ---
+                    match key.code {
+                        KeyCode::Enter => {
+                            app.exit_search_mode();
+                            // Jump to the first result after confirming search
+                            app.jump_to_result(0, log_viewport_height as usize);
+                        }
+                        KeyCode::Esc => {
+                            app.cancel_search();
+                        }
+                        KeyCode::Backspace => {
+                            app.search_query.pop();
+                            app.update_search_results();
+                        }
+                        KeyCode::Char(c) => {
+                            app.search_query.push(c);
+                            app.update_search_results();
+                        }
+                        _ => {} // Ignore other keys in search mode for now
+                    }
+                } else if app.awaiting_verbosity_input {
+                    // --- Verbosity Input Handling ---
                     match key.code {
                         KeyCode::Char(c) if c >= '0' && c <= '3' => {
                             let new_level = c.to_digit(10).unwrap() as u8;
@@ -180,52 +285,56 @@ pub fn run_app(
                             crate::http::set_verbose(new_level);
                             crate::logger::log_info(format!("Verbosity updated to {}", new_level));
                         }
-                        _ => {
+                        KeyCode::Esc => {
+                            // Allow Esc to cancel verbosity change
                             app.awaiting_verbosity_input = false;
+                            crate::logger::log_info("Verbosity change cancelled".to_string());
+                        }
+                        _ => {
+                            // Keep awaiting input on invalid key
                             crate::logger::log_warning(
-                                "Invalid verbosity key pressed, cancelling verbosity change"
+                                "Invalid verbosity level. Enter 0-3 or Esc to cancel."
                                     .to_string(),
                             );
                         }
                     }
                 } else {
+                    // --- Normal Mode Input Handling ---
                     match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc => {
+                        KeyCode::Char('q') => app.quit(),
+                        KeyCode::Esc => { // Esc can also quit in normal mode
                             app.quit();
                         }
-                        KeyCode::Up => {
-                            app.scroll_up();
-                        }
-                        KeyCode::Down => {
-                            app.scroll_down();
-                        }
+                        KeyCode::Up | KeyCode::Char('k') => app.scroll_up(),
+                        KeyCode::Down | KeyCode::Char('j') => app.scroll_down(),
                         KeyCode::PageUp => {
-                            let page_size = terminal.size()?.height as usize / 2;
-                            app.page_up(page_size);
+                            app.page_up(log_viewport_height as usize);
                         }
                         KeyCode::PageDown => {
-                            let page_size = terminal.size()?.height as usize / 2;
-                            app.page_down(page_size);
+                            app.page_down(log_viewport_height as usize);
                         }
-                        KeyCode::Home => {
-                            app.scroll_to_top();
-                        }
-                        KeyCode::End => {
-                            app.scroll_to_bottom();
-                        }
-                        KeyCode::Char('a') => {
-                            app.toggle_auto_scroll();
-                        }
-                        KeyCode::Char('j') => {
-                            app.scroll_down();
-                        }
-                        KeyCode::Char('k') => {
-                            app.scroll_up();
-                        }
+                        KeyCode::Home => app.scroll_to_top(),
+                        KeyCode::End => app.scroll_to_bottom(),
+                        KeyCode::Char('a') => app.toggle_auto_scroll(),
                         KeyCode::Char('v') => {
                             app.awaiting_verbosity_input = true;
-                            crate::logger::log_info("Enter new verbosity level (0-3):".to_string());
+                            crate::logger::log_info("Enter new verbosity level (0-3) or Esc to cancel:".to_string());
                         }
+                        KeyCode::Char('/') => {
+                            app.enter_search_mode();
+                        }
+                        KeyCode::Char('n') => {
+                            // Check for Shift modifier for 'N'
+                            if key.modifiers.contains(KeyModifiers::SHIFT) {
+                                app.jump_to_previous_result(log_viewport_height as usize);
+                            } else {
+                                app.jump_to_next_result(log_viewport_height as usize);
+                            }
+                        }
+                        // Explicitly handle Shift+N if needed, though 'n' with SHIFT modifier covers it
+                        // KeyCode::Char('N') => { // This typically requires checking modifiers
+                        //     app.jump_to_previous_result(log_viewport_height as usize);
+                        // }
                         _ => {}
                     }
                 }
@@ -253,11 +362,14 @@ fn ui(f: &mut Frame, app: &mut App) {
     ])
     .split(area);
     render_status_panel(f, app, chunks[0]);
-    render_logs_panel(f, app, chunks[1]);
+    // Pass viewport height to render_logs_panel for highlighting logic if needed
+    // (though jump logic now handles scroll calculation)
+    let log_viewport_height = chunks[1].height.saturating_sub(2); // Account for borders
+    render_logs_panel(f, app, chunks[1], log_viewport_height);
     render_command_panel(f, app, chunks[2]);
 }
 
-fn render_status_panel(f: &mut Frame, app: &mut App, area: Rect) {
+fn render_status_panel(f: &mut Frame, _app: &mut App, area: Rect) {
     use ratatui::widgets::{Cell, Row, Table};
     let header = Row::new(vec![
         Cell::from("Resource"),
@@ -298,45 +410,76 @@ fn render_status_panel(f: &mut Frame, app: &mut App, area: Rect) {
     f.render_widget(table, area);
 }
 
-fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect) {
+fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect, _viewport_height: u16) {
     f.render_widget(Clear, area);
-    // Build log lines with timestamp prefixes and colored messages, wrapping long messages into multiple lines
-    let _inner_width = if area.width > 2 {
+    // Build log lines with timestamp prefixes and colored messages
+    let inner_width = if area.width > 2 {
         area.width - 2
     } else {
         area.width
+    } else {
+        0
     } as usize;
+
     let mut log_lines: Vec<Line> = Vec::new();
-    for log in &app.logs {
+    let search_highlight_style = Style::default().bg(Color::Yellow).fg(Color::Black);
+    let current_match_highlight_style = Style::default().bg(Color::Rgb(255, 165, 0)); // Orange background
+
+    let current_match_log_index = app
+        .current_search_result_index
+        .and_then(|idx| app.search_results.get(idx).copied());
+
+    for (log_index, log) in app.logs.iter().enumerate() {
         let time = log.timestamp.format("%H:%M:%S").to_string();
         let prefix = format!("[{}] ", time);
         let prefix_width = prefix.chars().count();
+
+        // Determine base style and color
         let color = match log.level {
             LogLevel::Info => Color::Cyan,
             LogLevel::Success => Color::Green,
             LogLevel::Warning => Color::Yellow,
             LogLevel::Error => Color::Red,
         };
-        let lines: Vec<&str> = log.message.split('\n').collect();
-        if lines.is_empty() || (lines.len() == 1 && lines[0].is_empty()) {
+        let base_style = Style::default().fg(color);
+
+        // Determine if this line is a search result
+        let is_search_result = app.search_results.contains(&log_index);
+        let is_current_match = current_match_log_index == Some(log_index);
+
+        let line_style = if is_current_match {
+            current_match_highlight_style
+        } else if is_search_result {
+            search_highlight_style
+        } else {
+            base_style // Fallback to level-based color if not a search result
+        };
+
+        // Split message into lines and apply styling
+        let message_lines: Vec<&str> = log.message.split('\n').collect();
+        if message_lines.is_empty() || (message_lines.len() == 1 && message_lines[0].is_empty()) {
+            // Handle empty log messages
             log_lines.push(Line::from(vec![Span::styled(
                 prefix.clone(),
-                Style::default().fg(Color::DarkGray),
+                Style::default().fg(Color::DarkGray), // Timestamp prefix style
             )]));
         } else {
+            // First line with timestamp
             log_lines.push(Line::from(vec![
                 Span::styled(prefix.clone(), Style::default().fg(Color::DarkGray)),
-                Span::styled(lines[0].to_string(), Style::default().fg(color)),
+                Span::styled(message_lines[0].to_string(), line_style), // Apply highlight/base style
             ]));
-            let indent = "⠀".repeat(prefix_width);
-            for line in lines.iter().skip(1) {
+            // Subsequent lines indented
+            let indent = " ".repeat(prefix_width); // Use spaces for indent
+            for line_content in message_lines.iter().skip(1) {
                 log_lines.push(Line::from(vec![
                     Span::raw(indent.clone()),
-                    Span::styled(line.to_string(), Style::default().fg(color)),
+                    Span::styled(line_content.to_string(), line_style), // Apply same style
                 ]));
             }
         }
     }
+
 
     let total_lines = log_lines.len();
     let available_height = if area.height > 2 {
@@ -382,13 +525,47 @@ fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect) {
     );
 }
 
-fn render_command_panel(f: &mut Frame, _app: &mut App, area: Rect) {
-    let command_text = " Quit: q | Verbosity: v | Auto-scroll: a | Search: / | Scroll: ↑/↓/PgUp/PgDn/Home/End ";
+fn render_command_panel(f: &mut Frame, app: &mut App, area: Rect) {
+    let command_text = if app.search_mode {
+        // Display search prompt
+        format!("/{}", app.search_query)
+    } else if app.awaiting_verbosity_input {
+        // Display verbosity prompt
+        "Enter verbosity (0-3) or Esc:".to_string()
+    } else if !app.search_query.is_empty() && !app.search_results.is_empty() {
+        // Display search status if there are results
+        let current_num = app.current_search_result_index.map_or(0, |i| i + 1);
+        format!(
+            "Search '{}': {}/{} | Quit: q | Verbosity: v | Auto-scroll: a | Search: / | Next: n | Prev: N",
+            app.search_query,
+            current_num,
+            app.search_results.len()
+        )
+    } else if !app.search_query.is_empty() {
+         // Display search status if query exists but no results
+         format!(
+            "Search '{}': Not found | Quit: q | Verbosity: v | Auto-scroll: a | Search: /",
+            app.search_query
+        )
+    }
+    else {
+        // Default commands
+        "Quit: q | Verbosity: v | Auto-scroll: a | Search: / | Scroll: ↑/↓/PgUp/PgDn/Home/End".to_string()
+    };
+
     let paragraph = Paragraph::new(Span::styled(
         command_text,
         Style::default().fg(Color::White).bg(Color::Blue),
     ))
     .alignment(Alignment::Left);
+
+    // Render cursor in search mode
+    if app.search_mode {
+        f.set_cursor(
+            area.x + 1 + app.search_query.chars().count() as u16, // +1 for the '/'
+            area.y,
+        )
+    }
     f.render_widget(paragraph, area);
 }
 
