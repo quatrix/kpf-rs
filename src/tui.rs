@@ -13,6 +13,8 @@ use std::io;
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
+use ratatui::text::{Span, Spans};
+use ratatui::widgets::Wrap;
 use textwrap::{self, Options};
 
 pub struct LogEntry {
