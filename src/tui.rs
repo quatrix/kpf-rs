@@ -1,6 +1,8 @@
 use anyhow::Result;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers},
+    event::{
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers,
+    },
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -293,8 +295,7 @@ pub fn run_app(
                         _ => {
                             // Keep awaiting input on invalid key
                             crate::logger::log_warning(
-                                "Invalid verbosity level. Enter 0-3 or Esc to cancel."
-                                    .to_string(),
+                                "Invalid verbosity level. Enter 0-3 or Esc to cancel.".to_string(),
                             );
                         }
                     }
@@ -302,7 +303,8 @@ pub fn run_app(
                     // --- Normal Mode Input Handling ---
                     match key.code {
                         KeyCode::Char('q') => app.quit(),
-                        KeyCode::Esc => { // Esc can also quit in normal mode
+                        KeyCode::Esc => {
+                            // Esc can also quit in normal mode
                             app.quit();
                         }
                         KeyCode::Up | KeyCode::Char('k') => app.scroll_up(),
@@ -318,7 +320,9 @@ pub fn run_app(
                         KeyCode::Char('a') => app.toggle_auto_scroll(),
                         KeyCode::Char('v') => {
                             app.awaiting_verbosity_input = true;
-                            crate::logger::log_info("Enter new verbosity level (0-3) or Esc to cancel:".to_string());
+                            crate::logger::log_info(
+                                "Enter new verbosity level (0-3) or Esc to cancel:".to_string(),
+                            );
                         }
                         KeyCode::Char('/') => {
                             app.enter_search_mode();
@@ -369,7 +373,7 @@ fn ui(f: &mut Frame, app: &mut App) {
     render_command_panel(f, app, chunks[2]);
 }
 
-fn render_status_panel(f: &mut Frame, _app: &mut App, area: Rect) {
+fn render_status_panel(f: &mut Frame, app: &mut App, area: Rect) {
     use ratatui::widgets::{Cell, Row, Table};
     let header = Row::new(vec![
         Cell::from("Resource"),
@@ -478,7 +482,6 @@ fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect, _viewport_height:
         }
     }
 
-
     let total_lines = log_lines.len();
     let available_height = if area.height > 2 {
         area.height - 2
@@ -540,15 +543,15 @@ fn render_command_panel(f: &mut Frame, app: &mut App, area: Rect) {
             app.search_results.len()
         )
     } else if !app.search_query.is_empty() {
-         // Display search status if query exists but no results
-         format!(
+        // Display search status if query exists but no results
+        format!(
             "Search '{}': Not found | Quit: q | Verbosity: v | Auto-scroll: a | Search: /",
             app.search_query
         )
-    }
-    else {
+    } else {
         // Default commands
-        "Quit: q | Verbosity: v | Auto-scroll: a | Search: / | Scroll: ↑/↓/PgUp/PgDn/Home/End".to_string()
+        "Quit: q | Verbosity: v | Auto-scroll: a | Search: / | Scroll: ↑/↓/PgUp/PgDn/Home/End"
+            .to_string()
     };
 
     let paragraph = Paragraph::new(Span::styled(
