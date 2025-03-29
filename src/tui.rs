@@ -285,10 +285,15 @@ fn ui(f: &mut Frame, app: &App) {
         0
     };
 
-    // Create a paragraph with the logs and apply scrolling
-    let logs = Paragraph::new(wrapped_lines.clone())
-        .block(logs_block)
-        .scroll((scroll_offset as u16, 0));
+    // Create a paragraph as a pager by slicing the wrapped lines
+    let visible_lines: Vec<Line> = wrapped_lines
+        .iter()
+        .skip(scroll_offset)
+        .take(inner_height)
+        .cloned()
+        .collect();
+    let logs = Paragraph::new(visible_lines)
+        .block(logs_block);
 
     // Render the logs
     f.render_widget(logs, size);
