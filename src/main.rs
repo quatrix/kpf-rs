@@ -79,8 +79,8 @@ async fn run_cli_mode(args: Args) -> Result<()> {
     // Print startup banner
     cli::print_startup_banner();
     
-    println!("{} Kubernetes port-forward utility", "🚀".bright_green());
-    println!("{} Verbosity level: {}", "🔊".bright_yellow(), args.verbose);
+    logger::log_info(format!("{} Kubernetes port-forward utility", "🚀".bright_green()));
+    logger::log_info(format!("{} Verbosity level: {}", "🔊".bright_yellow(), args.verbose));
     
     if let Some(config_path) = args.config {
         // Load config file and start multiple port-forwards
@@ -92,13 +92,13 @@ async fn run_cli_mode(args: Args) -> Result<()> {
         let (resource_type, resource_name, resource_port) = k8s::parse_resource(&resource_str)?;
         let local_port = args.local_port.unwrap_or(resource_port);
         
-        println!("{} Forwarding {} {}/{} port {} via HTTP proxy on port {}",
+        logger::log_info(format!("{} Forwarding {} {}/{} port {} via HTTP proxy on port {}",
             "📡".cyan(),
             resource_type.bright_blue(),
             resource_name.bright_yellow(),
             resource_port.to_string().bright_magenta(),
             resource_port.to_string().bright_magenta(),
-            local_port.to_string().bright_green());
+            local_port.to_string().bright_green()));
         
         forwarder::start_single(
             resource_type,
@@ -241,7 +241,6 @@ async fn run_tui_mode(args: Args) -> Result<()> {
     
     // Handle any errors from the app
     if let Err(err) = res {
-        eprintln!("Error: {}", err);
         logger::log_error(format!("TUI error: {}", err));
     }
     
