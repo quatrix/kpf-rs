@@ -237,7 +237,7 @@ pub async fn start_from_config(
                 ForwardStatus {
                     resource: format!("{}/{}", resource_type, resource_name),
                     local_port,
-                    active: false,
+                    state: "INITIALIZING".to_string(),
                     last_probe: None,
                 },
             );

@@ -23,7 +23,7 @@ use textwrap;
 pub struct ForwardStatus {
     pub resource: String,
     pub local_port: u16,
-    pub active: bool,
+    pub state: String,
     pub last_probe: Option<String>,
 }
 
@@ -278,17 +278,10 @@ fn render_status_panel(f: &mut Frame, app: &mut App, area: Rect) {
         .forward_statuses
         .iter()
         .map(|st| {
-            let status_str = if st.active {
-                "ACTIVE"
-            } else if st.last_probe.is_none() {
-                "OPEN"
-            } else {
-                "INACTIVE"
-            };
             Row::new(vec![
                 Cell::from(st.resource.clone()),
                 Cell::from(st.local_port.to_string()),
-                Cell::from(status_str),
+                Cell::from(st.state.clone()),
                 Cell::from(st.last_probe.clone().unwrap_or_else(|| "N/A".to_string())),
             ])
         })
