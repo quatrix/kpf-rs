@@ -6,7 +6,7 @@ use crossterm::{
 };
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, Borders, Paragraph, Wrap, Scrollbar, ScrollbarOrientation, ScrollbarState},
     Frame,
     text::{Span, Line},
 };
@@ -36,6 +36,7 @@ pub struct App {
     should_quit: bool,
     scroll: usize,
     auto_scroll: bool,
+    log_scroll_state: ScrollbarState,
 }
 
 impl App {
@@ -46,6 +47,7 @@ impl App {
             should_quit: false,
             scroll: 0,
             auto_scroll: true,
+            log_scroll_state: ScrollbarState::default(),
         }
     }
 
@@ -210,12 +212,12 @@ pub fn run_app(
     }
 }
 
-fn ui(f: &mut Frame, app: &App) {
+fn ui(f: &mut Frame, app: &mut App) {
     let area = f.size();
     render_logs_panel(f, app, area);
 }
 
-fn render_logs_panel(f: &mut Frame, app: &App, area: Rect) {
+fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect) {
     // Build log lines with timestamp prefixes and colored messages, wrapping long messages into multiple lines
     let inner_width = if area.width > 2 { area.width - 2 } else { area.width } as usize;
     let mut log_lines: Vec<Line> = Vec::new();
@@ -273,6 +275,23 @@ fn render_logs_panel(f: &mut Frame, app: &App, area: Rect) {
         .block(block)
         .wrap(Wrap { trim: true });
     f.render_widget(paragraph, area);
+
+    app.log_scroll_state = app.log_scroll_state.content_length(total_lines);
+    app.log_scroll_state = app.log_scroll_state.position(app.scroll);
+
+    let scrollbar_area = Rect {
+        x: area.x + area.width - 1,
+        y: area.y,
+        width: 1,
+        height: area.height,
+    };
+    f.render_stateful_widget(
+        Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(Some("↑"))
+            .end_symbol(Some("↓")),
+        scrollbar_area,
+        &mut app.log_scroll_state,
+    );
 }
 
 pub fn setup_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>> {
