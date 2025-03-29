@@ -13,7 +13,7 @@ const RETRY_DELAY_MS: u64 = 1000;
 
 use std::net::TcpListener;
 
-static FORWARD_STATUSES: Mutex<Vec<crate::tui::ForwardStatus>> = Mutex::new(Vec::new());
+pub static FORWARD_STATUSES: Mutex<Vec<crate::tui::ForwardStatus>> = Mutex::new(Vec::new());
 
 fn find_available_port() -> Result<u16> {
     // Bind to port 0 to get an available port from the OS

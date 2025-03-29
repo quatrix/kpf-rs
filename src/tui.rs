@@ -69,16 +69,20 @@ impl App {
     pub fn on_tick(&mut self) {
         // Process any new log messages
         let mut received_logs = false;
-
+    
         // Try to receive all pending log messages
         while let Ok(log) = self.log_receiver.try_recv() {
             self.logs.push(log);
             received_logs = true;
         }
-
+    
         // Auto-scroll to bottom if enabled and we received new logs
         if received_logs && self.auto_scroll {
             self.scroll_to_bottom();
+        }
+        
+        if let Ok(statuses) = crate::forwarder::FORWARD_STATUSES.lock() {
+            self.forward_statuses = statuses.clone();
         }
     }
 
