@@ -249,21 +249,21 @@ fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect) {
             LogLevel::Warning => Color::Yellow,
             LogLevel::Error => Color::Red,
         };
-        let wrapped = textwrap::wrap(&log.message, inner_width.saturating_sub(prefix_width));
-        if wrapped.is_empty() {
+        let lines: Vec<&str> = log.message.split('\n').collect();
+        if lines.is_empty() || (lines.len() == 1 && lines[0].is_empty()) {
             log_lines.push(Line::from(vec![
                 Span::styled(prefix.clone(), Style::default().fg(Color::DarkGray)),
             ]));
         } else {
             log_lines.push(Line::from(vec![
                 Span::styled(prefix.clone(), Style::default().fg(Color::DarkGray)),
-                Span::styled(wrapped[0].to_string(), Style::default().fg(color)),
+                Span::styled(lines[0].to_string(), Style::default().fg(color)),
             ]));
             let indent = " ".repeat(prefix_width);
-            for w in wrapped.iter().skip(1) {
+            for line in lines.iter().skip(1) {
                 log_lines.push(Line::from(vec![
                     Span::raw(indent.clone()),
-                    Span::styled(w.to_string(), Style::default().fg(color)),
+                    Span::styled(line.to_string(), Style::default().fg(color)),
                 ]));
             }
         }
