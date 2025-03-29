@@ -229,7 +229,7 @@ fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect) {
         let wrapped = textwrap::wrap(&log.message, inner_width.saturating_sub(prefix_width));
         if wrapped.is_empty() {
             log_lines.push(Line::from(vec![
-                Span::styled(prefix.clone(), Style::default().fg(Color::DarkGray))
+                Span::styled(prefix.clone(), Style::default().fg(Color::DarkGray)),
             ]));
         } else {
             log_lines.push(Line::from(vec![
@@ -237,38 +237,31 @@ fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect) {
                 Span::styled(wrapped[0].to_string(), Style::default().fg(color)),
             ]));
             let indent = " ".repeat(prefix_width);
-            for line in wrapped.iter().skip(1) {
+            for w in wrapped.iter().skip(1) {
                 log_lines.push(Line::from(vec![
                     Span::raw(indent.clone()),
-                    Span::styled(line.to_string(), Style::default().fg(color)),
+                    Span::styled(w.to_string(), Style::default().fg(color)),
                 ]));
             }
         }
     }
 
-    // Determine available height and compute scroll offset
-    let available_height = if area.height > 2 { area.height - 2 } else { area.height } as usize;
     let total_lines = log_lines.len();
-    let scroll = if app.auto_scroll {
-        total_lines.saturating_sub(available_height)
-    } else {
-        app.scroll.min(total_lines.saturating_sub(available_height))
-    };
-
-    let visible_lines: Vec<Line> = log_lines.iter()
-        .skip(scroll)
-        .take(available_height)
-        .cloned()
-        .collect();
+    let available_height = if area.height > 2 { area.height - 2 } else { area.height } as usize;
+    let max_scroll = total_lines.saturating_sub(available_height);
+    if app.scroll > max_scroll {
+        app.scroll = max_scroll;
+    }
 
     let block = Block::default()
         .title(if app.auto_scroll { "Logs (Auto Scroll)" } else { "Logs (Manual Scroll)" })
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Cyan));
 
-    let paragraph = Paragraph::new(visible_lines)
+    let paragraph = Paragraph::new(log_lines)
         .block(block)
-        .wrap(Wrap { trim: true });
+        .wrap(Wrap { trim: true })
+        .scroll((app.scroll as u16, 0));
     f.render_widget(paragraph, area);
 
     app.log_scroll_state = app.log_scroll_state.content_length(total_lines);
