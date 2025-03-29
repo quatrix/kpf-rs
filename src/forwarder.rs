@@ -1,4 +1,3 @@
-use crate::cli;
 use crate::config::Config;
 use crate::http::start_http_server;
 use crate::k8s::{create_port_forward, parse_resource};
@@ -60,7 +59,6 @@ pub async fn start_single(
         loop {
             attempt += 1;
             if attempt > 1 {
-                cli::print_retry(attempt, MAX_RETRY_ATTEMPTS);
                 sleep(Duration::from_millis(RETRY_DELAY_MS)).await;
             }
             
@@ -74,12 +72,6 @@ pub async fn start_single(
                             std::process::id()));
                     }
                     
-                    cli::print_forwarding_status(
-                        &format!("{}/{}", resource_type, resource_name),
-                        internal_port,
-                        resource_port,
-                        true,
-                    );
                     
                     crate::logger::log_info(format!("{} HTTP proxy listening on port {} and forwarding to internal port {}", 
                         "🔄", 
@@ -135,12 +127,6 @@ pub async fn start_single(
                             std::process::id()));
                     }
                     
-                    cli::print_forwarding_status(
-                        &format!("{}/{}", resource_type, resource_name),
-                        internal_port,
-                        resource_port,
-                        false,
-                    );
                     
                     if let Err(e) = result {
                         crate::logger::log_error(format!("Port-forward failed: {}", e));
@@ -166,7 +152,7 @@ pub async fn start_single(
 
     // Wait for shutdown signal
     if let Some(_) = rx.recv().await {
-        crate::logger::log_warning(format!("{} Shutting down...", "🛑".bright_red()));
+        crate::logger::log_warning(format!("{} Shutting down...", "🛑"));
     }
 
     // Wait for tasks to complete
