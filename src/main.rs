@@ -1,6 +1,5 @@
 use anyhow::Result;
 use clap::Parser;
-use colored::*;
 use std::path::PathBuf;
 use std::time::Duration;
 

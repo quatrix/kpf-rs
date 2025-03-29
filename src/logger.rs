@@ -1,4 +1,3 @@
-use colored::*;
 use std::sync::{mpsc, Mutex, Once};
 use tracing_subscriber::{fmt, EnvFilter};
 

@@ -1,4 +1,3 @@
-use colored::*;
 use crate::logger;
 
 pub fn print_startup_banner() {

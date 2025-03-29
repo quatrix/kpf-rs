@@ -122,7 +122,7 @@ async fn proxy_request(
             // Always log to the TUI logger
             crate::logger::log_success(format!(
                 "{} {} - {} {} → {} ({})",
-                "✓".bright_green(),
+                "✓",
                 resource,
                 colored_method,
                 path,
@@ -263,21 +263,21 @@ async fn proxy_request(
             }
             // Always log error responses regardless of verbosity level
             let colored_method = match method {
-                hyper::Method::GET => "GET".bright_blue(),
-                hyper::Method::POST => "POST".bright_magenta(),
-                hyper::Method::PUT => "PUT".bright_yellow(),
-                hyper::Method::DELETE => "DELETE".bright_red(),
-                _ => method.as_str().normal(),
+                hyper::Method::GET => "GET",
+                hyper::Method::POST => "POST",
+                hyper::Method::PUT => "PUT",
+                hyper::Method::DELETE => "DELETE",
+                _ => method.as_str(),
             };
             // Always log to the TUI logger
             crate::logger::log_error(format!(
                 "{} {} - {} {} → {} ({})",
-                "✗".bright_red(),
+                "✗",
                 resource,
                 colored_method,
                 path,
-                "502 Bad Gateway".bright_red(),
-                format!("{}ms", start.elapsed().as_millis()).bright_yellow()
+                "502 Bad Gateway",
+                format!("{}ms", start.elapsed().as_millis())
             ));
 
             Ok(response)
