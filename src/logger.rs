@@ -1,11 +1,22 @@
 use colored::*;
-use std::sync::mpsc;
+use std::sync::{mpsc, Mutex, Once};
 use tracing_subscriber::{fmt, EnvFilter};
 
 // Global log sender
 static mut LOG_SENDER: Option<mpsc::Sender<crate::tui::LogEntry>> = None;
+// Mutex to synchronize log output
+static mut LOG_MUTEX: Option<Mutex<()>> = None;
+// Ensure initialization happens only once
+static INIT: Once = Once::new();
 
 pub fn init(verbose: u8) {
+    // Initialize the mutex only once
+    INIT.call_once(|| {
+        unsafe {
+            LOG_MUTEX = Some(Mutex::new(()));
+        }
+    });
+
     // Use a fixed log level for the application
     let filter = match verbose {
         0 => "warn",
@@ -38,6 +49,16 @@ pub fn set_log_sender(sender: mpsc::Sender<crate::tui::LogEntry>) {
 
 pub fn log_info(message: String) {
     unsafe {
+        // Acquire the lock to ensure synchronized logging
+        let _guard = if let Some(mutex) = &LOG_MUTEX {
+            Some(mutex.lock().unwrap_or_else(|e| {
+                eprintln!("Failed to acquire log mutex: {}", e);
+                e.into_inner()
+            }))
+        } else {
+            None
+        };
+
         if let Some(sender) = &LOG_SENDER {
             match sender.send(crate::tui::LogEntry {
                 timestamp: chrono::Utc::now(),
@@ -55,6 +76,16 @@ pub fn log_info(message: String) {
 
 pub fn log_success(message: String) {
     unsafe {
+        // Acquire the lock to ensure synchronized logging
+        let _guard = if let Some(mutex) = &LOG_MUTEX {
+            Some(mutex.lock().unwrap_or_else(|e| {
+                eprintln!("Failed to acquire log mutex: {}", e);
+                e.into_inner()
+            }))
+        } else {
+            None
+        };
+
         if let Some(sender) = &LOG_SENDER {
             match sender.send(crate::tui::LogEntry {
                 timestamp: chrono::Utc::now(),
@@ -72,6 +103,16 @@ pub fn log_success(message: String) {
 
 pub fn log_warning(message: String) {
     unsafe {
+        // Acquire the lock to ensure synchronized logging
+        let _guard = if let Some(mutex) = &LOG_MUTEX {
+            Some(mutex.lock().unwrap_or_else(|e| {
+                eprintln!("Failed to acquire log mutex: {}", e);
+                e.into_inner()
+            }))
+        } else {
+            None
+        };
+
         if let Some(sender) = &LOG_SENDER {
             match sender.send(crate::tui::LogEntry {
                 timestamp: chrono::Utc::now(),
@@ -89,6 +130,16 @@ pub fn log_warning(message: String) {
 
 pub fn log_error(message: String) {
     unsafe {
+        // Acquire the lock to ensure synchronized logging
+        let _guard = if let Some(mutex) = &LOG_MUTEX {
+            Some(mutex.lock().unwrap_or_else(|e| {
+                eprintln!("Failed to acquire log mutex: {}", e);
+                e.into_inner()
+            }))
+        } else {
+            None
+        };
+
         if let Some(sender) = &LOG_SENDER {
             match sender.send(crate::tui::LogEntry {
                 timestamp: chrono::Utc::now(),
