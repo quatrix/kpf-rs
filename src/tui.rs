@@ -281,20 +281,20 @@ fn ui(f: &mut Frame, app: &App) {
     // Render the logs
     f.render_widget(logs, size);
 
-    // If we have logs and are not in auto-scroll mode, show a scroll indicator
-    if !app.logs.is_empty() && !app.auto_scroll {
-        let scroll_percent = if app.logs.len() <= inner_height {
+    // If we have wrapped lines and are not in auto-scroll mode, show a scroll indicator
+    if !wrapped_lines.is_empty() && !app.auto_scroll {
+        let scroll_percent = if wrapped_lines.len() <= inner_height {
             100
         } else {
-            (scroll_offset * 100) / (app.logs.len() - inner_height)
+            (scroll_offset * 100) / (wrapped_lines.len() - inner_height)
         };
 
-        let scroll_indicator = format!(" {scroll_percent}% ");
+        let scroll_indicator = format!(" {}% ", scroll_percent);
         let scroll_indicator_width = scroll_indicator.len() as u16;
 
         let scroll_indicator_layout = Rect {
-            x: size.width - scroll_indicator_width - 1,
-            y: 0,
+            x: size.x + size.width - scroll_indicator_width - 1,
+            y: size.y,
             width: scroll_indicator_width,
             height: 1,
         };
