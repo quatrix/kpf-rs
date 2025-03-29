@@ -37,7 +37,6 @@ pub struct App {
     scroll: usize,
     auto_scroll: bool,
     log_scroll_state: ScrollbarState,
-    pub verbose: u8,
     awaiting_verbosity_input: bool,
 }
 
@@ -50,7 +49,6 @@ impl App {
             scroll: 0,
             auto_scroll: true,
             log_scroll_state: ScrollbarState::default(),
-            verbose: 1,
             awaiting_verbosity_input: false,
         }
     }
@@ -165,9 +163,10 @@ pub fn run_app(
                 if app.awaiting_verbosity_input {
                     match key.code {
                         KeyCode::Char(c) if c >= '0' && c <= '3' => {
-                            app.verbose = c.to_digit(10).unwrap() as u8;
+                            let new_level = c.to_digit(10).unwrap() as u8;
                             app.awaiting_verbosity_input = false;
-                            crate::logger::log_info(format!("Verbosity updated to {}", app.verbose));
+                            crate::http::set_verbose(new_level);
+                            crate::logger::log_info(format!("Verbosity updated to {}", new_level));
                         }
                         _ => {
                             app.awaiting_verbosity_input = false;
