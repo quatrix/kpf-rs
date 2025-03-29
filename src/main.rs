@@ -60,6 +60,7 @@ async fn main() -> Result<()> {
     
     // Initialize logger with verbosity level
     logger::init(args.verbose);
+    http::set_verbose(args.verbose);
     
     run_tui_mode(args).await
 }

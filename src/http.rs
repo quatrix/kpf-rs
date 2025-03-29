@@ -6,7 +6,7 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-static HTTP_VERBOSE: AtomicU8 = AtomicU8::new(1);
+static HTTP_VERBOSE: AtomicU8 = AtomicU8::new(0);
 
 async fn proxy_request(
     req: Request<Body>,
