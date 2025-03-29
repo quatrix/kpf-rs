@@ -8,7 +8,7 @@ use ratatui::{
     prelude::*,
     widgets::{Block, Borders, Paragraph, Wrap},
     Frame,
-    text::{Span},
+    text::{Span, Line},
 };
 use std::io;
 use std::sync::mpsc;
@@ -217,7 +217,7 @@ fn ui(f: &mut Frame, app: &App) {
 
 fn render_logs_panel(f: &mut Frame, app: &App, area: Rect) {
     // Build log lines with timestamp prefixes and colored messages
-    let log_lines: Vec<Spans> = app.logs.iter().map(|log| {
+    let log_lines: Vec<Line> = app.logs.iter().map(|log| {
         let time = log.timestamp.format("%H:%M:%S").to_string();
         let prefix = format!("[{}] ", time);
         let color = match log.level {
@@ -226,7 +226,7 @@ fn render_logs_panel(f: &mut Frame, app: &App, area: Rect) {
             LogLevel::Warning => Color::Yellow,
             LogLevel::Error => Color::Red,
         };
-        Spans::from(vec![
+        Line::from(vec![
             Span::styled(prefix, Style::default().fg(Color::DarkGray)),
             Span::styled(&log.message, Style::default().fg(color)),
         ])
@@ -241,7 +241,7 @@ fn render_logs_panel(f: &mut Frame, app: &App, area: Rect) {
         app.scroll.min(total_lines.saturating_sub(available_height))
     };
 
-    let visible_lines: Vec<Spans> = log_lines.iter()
+    let visible_lines: Vec<Line> = log_lines.iter()
         .skip(scroll)
         .take(available_height)
         .cloned()
