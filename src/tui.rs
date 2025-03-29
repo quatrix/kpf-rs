@@ -37,6 +37,8 @@ pub struct App {
     scroll: usize,
     auto_scroll: bool,
     log_scroll_state: ScrollbarState,
+    pub verbose: u8,
+    awaiting_verbosity_input: bool,
 }
 
 impl App {
@@ -48,6 +50,8 @@ impl App {
             scroll: 0,
             auto_scroll: true,
             log_scroll_state: ScrollbarState::default(),
+            verbose: 1,
+            awaiting_verbosity_input: false,
         }
     }
 
@@ -158,40 +162,58 @@ pub fn run_app(
 
         if crossterm::event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
-                match key.code {
-                    KeyCode::Char('q') | KeyCode::Esc => {
-                        app.quit();
+                if app.awaiting_verbosity_input {
+                    match key.code {
+                        KeyCode::Char(c) if c >= '0' && c <= '3' => {
+                            app.verbose = c.to_digit(10).unwrap() as u8;
+                            app.awaiting_verbosity_input = false;
+                            crate::logger::log_info(format!("Verbosity updated to {}", app.verbose));
+                        }
+                        _ => {
+                            app.awaiting_verbosity_input = false;
+                            crate::logger::log_warning("Invalid verbosity key pressed, cancelling verbosity change".to_string());
+                        }
                     }
-                    KeyCode::Up => {
-                        app.scroll_up();
+                } else {
+                    match key.code {
+                        KeyCode::Char('q') | KeyCode::Esc => {
+                            app.quit();
+                        }
+                        KeyCode::Up => {
+                            app.scroll_up();
+                        }
+                        KeyCode::Down => {
+                            app.scroll_down(max_scroll);
+                        }
+                        KeyCode::PageUp => {
+                            let page_size = terminal.size()?.height as usize / 2;
+                            app.page_up(page_size);
+                        }
+                        KeyCode::PageDown => {
+                            let page_size = terminal.size()?.height as usize / 2;
+                            app.page_down(page_size, max_scroll);
+                        }
+                        KeyCode::Home => {
+                            app.scroll_to_top();
+                        }
+                        KeyCode::End => {
+                            app.scroll_to_bottom();
+                        }
+                        KeyCode::Char('a') => {
+                            app.toggle_auto_scroll();
+                        }
+                        KeyCode::Char('j') => {
+                            app.scroll_down(max_scroll);
+                        }
+                        KeyCode::Char('k') => {
+                            app.scroll_up();
+                        }
+                        KeyCode::Char('v') => {
+                            app.awaiting_verbosity_input = true;
+                            crate::logger::log_info("Enter new verbosity level (0-3):".to_string());
+                        }
+                        _ => {}
                     }
-                    KeyCode::Down => {
-                        app.scroll_down(max_scroll);
-                    }
-                    KeyCode::PageUp => {
-                        let page_size = terminal.size()?.height as usize / 2;
-                        app.page_up(page_size);
-                    }
-                    KeyCode::PageDown => {
-                        let page_size = terminal.size()?.height as usize / 2;
-                        app.page_down(page_size, max_scroll);
-                    }
-                    KeyCode::Home => {
-                        app.scroll_to_top();
-                    }
-                    KeyCode::End => {
-                        app.scroll_to_bottom();
-                    }
-                    KeyCode::Char('a') => {
-                        app.toggle_auto_scroll();
-                    }
-                    KeyCode::Char('j') => {
-                        app.scroll_down(max_scroll);
-                    }
-                    KeyCode::Char('k') => {
-                        app.scroll_up();
-                    }
-                    _ => {}
                 }
             }
         }
