@@ -387,10 +387,17 @@ fn render_status_panel(f: &mut Frame, app: &mut App, area: Rect) {
         .forward_statuses
         .iter()
         .map(|st| {
+            let status = match st.state.to_string().as_str() {
+                "INITIALIZING" => "🔄 INITIALIZING",
+                "OPEN" => "🔓 OPEN",
+                "ACTIVE" => "🚀 ACTIVE",
+                "UNAVAILABLE" => "🚫 UNAVAILABLE",
+                other => other,
+            };
             Row::new(vec![
                 Cell::from(st.resource.clone()),
                 Cell::from(st.local_port.to_string()),
-                Cell::from(st.state.to_string()),
+                Cell::from(status),
                 Cell::from(st.last_probe.clone().unwrap_or_else(|| "N/A".to_string())),
             ])
         })
@@ -607,6 +614,7 @@ fn render_command_panel(f: &mut Frame, app: &mut App, area: Rect) {
         command_text,
         Style::default().fg(Color::White).bg(Color::Blue),
     ))
+    .block(Block::default().style(Style::default().bg(Color::Blue)))
     .alignment(Alignment::Left);
 
     // Render cursor in search mode
