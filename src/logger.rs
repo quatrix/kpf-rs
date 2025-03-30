@@ -1,17 +1,16 @@
-use std::sync::{mpsc, Mutex};
+use std::sync::{mpsc, Mutex, OnceLock};
 use tracing_subscriber::{fmt, EnvFilter};
 
-#[macro_use]
-extern crate lazy_static;
+static LOG_SENDER: OnceLock<Mutex<Option<mpsc::Sender<crate::tui::LogEntry>>>> = OnceLock::new();
 
-lazy_static! {
-    static ref LOG_SENDER: Mutex<Option<mpsc::Sender<crate::tui::LogEntry>>> = Mutex::new(None);
+fn log_sender() -> &'static Mutex<Option<mpsc::Sender<crate::tui::LogEntry>>> {
+    LOG_SENDER.get_or_init(|| Mutex::new(None))
 }
 
 pub fn init(_verbose: u8) {
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("error"));
 
-    let is_tui_mode = LOG_SENDER.lock().unwrap().is_some();
+    let is_tui_mode = log_sender().lock().unwrap().is_some();
 
     if !is_tui_mode {
         fmt::fmt()
@@ -22,11 +21,11 @@ pub fn init(_verbose: u8) {
 }
 
 pub fn set_log_sender(sender: mpsc::Sender<crate::tui::LogEntry>) {
-    *LOG_SENDER.lock().unwrap() = Some(sender);
+    *log_sender().lock().unwrap() = Some(sender);
 }
 
 pub fn log_info(message: String) {
-    if let Some(sender) = LOG_SENDER.lock().unwrap().clone() {
+    if let Some(sender) = log_sender().lock().unwrap().clone() {
         if let Err(e) = sender.send(crate::tui::LogEntry {
             timestamp: chrono::Utc::now(),
             message: message.clone(),
@@ -40,7 +39,7 @@ pub fn log_info(message: String) {
 }
 
 pub fn log_success(message: String) {
-    if let Some(sender) = LOG_SENDER.lock().unwrap().clone() {
+    if let Some(sender) = log_sender().lock().unwrap().clone() {
         if let Err(e) = sender.send(crate::tui::LogEntry {
             timestamp: chrono::Utc::now(),
             message: message.clone(),
@@ -54,7 +53,7 @@ pub fn log_success(message: String) {
 }
 
 pub fn log_warning(message: String) {
-    if let Some(sender) = LOG_SENDER.lock().unwrap().clone() {
+    if let Some(sender) = log_sender().lock().unwrap().clone() {
         if let Err(e) = sender.send(crate::tui::LogEntry {
             timestamp: chrono::Utc::now(),
             message: message.clone(),
@@ -68,7 +67,7 @@ pub fn log_warning(message: String) {
 }
 
 pub fn log_error(message: String) {
-    if let Some(sender) = LOG_SENDER.lock().unwrap().clone() {
+    if let Some(sender) = log_sender().lock().unwrap().clone() {
         if let Err(e) = sender.send(crate::tui::LogEntry {
             timestamp: chrono::Utc::now(),
             message: message.clone(),
