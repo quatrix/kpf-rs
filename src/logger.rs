@@ -9,16 +9,9 @@ static mut LOG_MUTEX: Option<Mutex<()>> = None;
 static INIT: Once = Once::new();
 
 pub fn init(_verbose: u8) {
-    // Initialize the mutex only once
-    INIT.call_once(|| unsafe {
-        LOG_MUTEX = Some(Mutex::new(()));
-    });
-
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("error"));
 
-    // Configure tracing to use a no-op subscriber when in TUI mode
-    // This prevents tracing logs from interfering with our custom logging
-    let is_tui_mode = unsafe { LOG_SENDER.is_some() };
+    let is_tui_mode = LOG_SENDER.lock().unwrap().is_some();
 
     if !is_tui_mode {
         fmt::fmt()
@@ -29,115 +22,61 @@ pub fn init(_verbose: u8) {
 }
 
 pub fn set_log_sender(sender: mpsc::Sender<crate::tui::LogEntry>) {
-    unsafe {
-        LOG_SENDER = Some(sender);
-    }
+    *LOG_SENDER.lock().unwrap() = Some(sender);
 }
 
 pub fn log_info(message: String) {
-    unsafe {
-        // Acquire the lock to ensure synchronized logging
-        let _guard = if let Some(mutex) = &LOG_MUTEX {
-            Some(mutex.lock().unwrap_or_else(|e| {
-                eprintln!("Failed to acquire log mutex: {}", e);
-                e.into_inner()
-            }))
-        } else {
-            None
-        };
-
-        if let Some(sender) = &LOG_SENDER {
-            match sender.send(crate::tui::LogEntry {
-                timestamp: chrono::Utc::now(),
-                message: message.clone(),
-                level: crate::tui::LogLevel::Info,
-            }) {
-                Ok(_) => {}
-                Err(e) => eprintln!("Failed to send log to TUI: {}", e),
-            }
-        } else {
-            println!("{} {}", "ℹ️", message);
+    if let Some(sender) = LOG_SENDER.lock().unwrap().clone() {
+        if let Err(e) = sender.send(crate::tui::LogEntry {
+            timestamp: chrono::Utc::now(),
+            message: message.clone(),
+            level: crate::tui::LogLevel::Info,
+        }) {
+            eprintln!("Failed to send log to TUI: {}", e);
         }
+    } else {
+        println!("{} {}", "ℹ️", message);
     }
 }
 
 pub fn log_success(message: String) {
-    unsafe {
-        // Acquire the lock to ensure synchronized logging
-        let _guard = if let Some(mutex) = &LOG_MUTEX {
-            Some(mutex.lock().unwrap_or_else(|e| {
-                eprintln!("Failed to acquire log mutex: {}", e);
-                e.into_inner()
-            }))
-        } else {
-            None
-        };
-
-        if let Some(sender) = &LOG_SENDER {
-            match sender.send(crate::tui::LogEntry {
-                timestamp: chrono::Utc::now(),
-                message: message.clone(),
-                level: crate::tui::LogLevel::Success,
-            }) {
-                Ok(_) => {}
-                Err(e) => eprintln!("Failed to send log to TUI: {}", e),
-            }
-        } else {
-            println!("{} {}", "✅", message);
+    if let Some(sender) = LOG_SENDER.lock().unwrap().clone() {
+        if let Err(e) = sender.send(crate::tui::LogEntry {
+            timestamp: chrono::Utc::now(),
+            message: message.clone(),
+            level: crate::tui::LogLevel::Success,
+        }) {
+            eprintln!("Failed to send log to TUI: {}", e);
         }
+    } else {
+        println!("{} {}", "✅", message);
     }
 }
 
 pub fn log_warning(message: String) {
-    unsafe {
-        // Acquire the lock to ensure synchronized logging
-        let _guard = if let Some(mutex) = &LOG_MUTEX {
-            Some(mutex.lock().unwrap_or_else(|e| {
-                eprintln!("Failed to acquire log mutex: {}", e);
-                e.into_inner()
-            }))
-        } else {
-            None
-        };
-
-        if let Some(sender) = &LOG_SENDER {
-            match sender.send(crate::tui::LogEntry {
-                timestamp: chrono::Utc::now(),
-                message: message.clone(),
-                level: crate::tui::LogLevel::Warning,
-            }) {
-                Ok(_) => {}
-                Err(e) => eprintln!("Failed to send log to TUI: {}", e),
-            }
-        } else {
-            println!("{} {}", "⚠️", message);
+    if let Some(sender) = LOG_SENDER.lock().unwrap().clone() {
+        if let Err(e) = sender.send(crate::tui::LogEntry {
+            timestamp: chrono::Utc::now(),
+            message: message.clone(),
+            level: crate::tui::LogLevel::Warning,
+        }) {
+            eprintln!("Failed to send log to TUI: {}", e);
         }
+    } else {
+        println!("{} {}", "⚠️", message);
     }
 }
 
 pub fn log_error(message: String) {
-    unsafe {
-        // Acquire the lock to ensure synchronized logging
-        let _guard = if let Some(mutex) = &LOG_MUTEX {
-            Some(mutex.lock().unwrap_or_else(|e| {
-                eprintln!("Failed to acquire log mutex: {}", e);
-                e.into_inner()
-            }))
-        } else {
-            None
-        };
-
-        if let Some(sender) = &LOG_SENDER {
-            match sender.send(crate::tui::LogEntry {
-                timestamp: chrono::Utc::now(),
-                message: message.clone(),
-                level: crate::tui::LogLevel::Error,
-            }) {
-                Ok(_) => {}
-                Err(e) => eprintln!("Failed to send log to TUI: {}", e),
-            }
-        } else {
-            eprintln!("{} {}", "❌", message);
+    if let Some(sender) = LOG_SENDER.lock().unwrap().clone() {
+        if let Err(e) = sender.send(crate::tui::LogEntry {
+            timestamp: chrono::Utc::now(),
+            message: message.clone(),
+            level: crate::tui::LogLevel::Error,
+        }) {
+            eprintln!("Failed to send log to TUI: {}", e);
         }
+    } else {
+        eprintln!("{} {}", "❌", message);
     }
 }
