@@ -121,11 +121,11 @@ pub async fn start_single(
                     if let Some(probe_path) = liveness_probe.clone() {
                         use hyper::{Body, Client, Request, StatusCode};
                         let client = Client::new();
-                        let timeout_duration = std::time::Duration::from_secs(timeout.unwrap_or(3));
+                        let timeout_duration = std::time::Duration::from_secs(timeout.unwrap_or(1));
                         let mut probe_fail_count = 0;
                         let mut probe_success = false;
                         loop {
-                            sleep(Duration::from_secs(5)).await;
+                            sleep(Duration::from_secs(2)).await;
                             let url = format!("http://127.0.0.1:{}{}", internal_port, probe_path);
                             let req = Request::get(url)
                                 .header("x-internal-probe", "true")
@@ -145,6 +145,17 @@ pub async fn start_single(
                                             });
                                         }
                                         probe_success = true;
+                                        break;
+                                    } else if response.status() == StatusCode::SERVICE_UNAVAILABLE {
+                                        crate::logger::log_warning("Received 503 from probe. Marking resource as UNAVAILABLE.".to_string());
+                                        {
+                                            let mut statuses = FORWARD_STATUSES.lock().unwrap();
+                                            let key = format!("{}/{}", resource_type, resource_name);
+                                            statuses.entry(key).and_modify(|entry| {
+                                                entry.state = "UNAVAILABLE".to_string();
+                                            });
+                                        }
+                                        probe_fail_count = 3;
                                         break;
                                     } else {
                                         probe_fail_count += 1;
