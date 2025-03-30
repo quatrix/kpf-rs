@@ -121,53 +121,67 @@ pub async fn start_single(
                     if let Some(probe_path) = liveness_probe.clone() {
                         use hyper::{Body, Client, Request, StatusCode};
                         let client = Client::new();
-                        let timeout_duration = std::time::Duration::from_secs(timeout.unwrap_or(1));
-                        let mut probe_fail_count = 0;
-                        let mut probe_success = false;
-                        loop {
-                            sleep(Duration::from_secs(2)).await;
-                            let url = format!("http://127.0.0.1:{}{}", internal_port, probe_path);
-                            let req = Request::get(url)
-                                .header("x-internal-probe", "true")
-                                .body(Body::empty())
-                                .unwrap();
-                            let res = tokio::time::timeout(timeout_duration, client.request(req)).await;
-                            match res {
-                                Ok(Ok(response)) => {
-                                    if response.status() == StatusCode::OK {
-                                        crate::logger::log_info("Successful probe received.".to_string());
-                                        {
-                                            let mut statuses = FORWARD_STATUSES.lock().unwrap();
-                                            let key = format!("{}/{}", resource_type, resource_name);
-                                            statuses.entry(key).and_modify(|entry| {
-                                                entry.last_probe = Some(chrono::Utc::now().to_rfc3339());
-                                                entry.state = "ACTIVE".to_string();
-                                            });
+                        let per_request_timeout = std::time::Duration::from_secs(timeout.unwrap_or(1));
+                        let overall_probe_timeout = std::time::Duration::from_secs(10);
+                        let probe_success = match tokio::time::timeout(overall_probe_timeout, async {
+                            let mut probe_fail_count = 0;
+                            loop {
+                                sleep(Duration::from_secs(2)).await;
+                                let url = format!("http://127.0.0.1:{}{}", internal_port, probe_path);
+                                let req = Request::get(url)
+                                    .header("x-internal-probe", "true")
+                                    .body(Body::empty())
+                                    .unwrap();
+                                let res = tokio::time::timeout(per_request_timeout, client.request(req)).await;
+                                match res {
+                                    Ok(Ok(response)) => {
+                                        if response.status() == StatusCode::OK {
+                                            crate::logger::log_info("Successful probe received.".to_string());
+                                            {
+                                                let mut statuses = FORWARD_STATUSES.lock().unwrap();
+                                                let key = format!("{}/{}", resource_type, resource_name);
+                                                statuses.entry(key).and_modify(|entry| {
+                                                    entry.last_probe = Some(chrono::Utc::now().to_rfc3339());
+                                                    entry.state = "ACTIVE".to_string();
+                                                });
+                                            }
+                                            return true;
+                                        } else if response.status() == StatusCode::SERVICE_UNAVAILABLE {
+                                            crate::logger::log_warning("Received 503 from probe. Marking resource as UNAVAILABLE.".to_string());
+                                            {
+                                                let mut statuses = FORWARD_STATUSES.lock().unwrap();
+                                                let key = format!("{}/{}", resource_type, resource_name);
+                                                statuses.entry(key).and_modify(|entry| {
+                                                    entry.state = "UNAVAILABLE".to_string();
+                                                });
+                                            }
+                                            return false;
+                                        } else {
+                                            probe_fail_count += 1;
+                                            crate::logger::log_warning(format!("Probe returned non-OK status: {}", response.status()));
                                         }
-                                        probe_success = true;
-                                        break;
-                                    } else if response.status() == StatusCode::SERVICE_UNAVAILABLE {
-                                        crate::logger::log_warning("Received 503 from probe. Marking resource as UNAVAILABLE.".to_string());
-                                        {
-                                            let mut statuses = FORWARD_STATUSES.lock().unwrap();
-                                            let key = format!("{}/{}", resource_type, resource_name);
-                                            statuses.entry(key).and_modify(|entry| {
-                                                entry.state = "UNAVAILABLE".to_string();
-                                            });
-                                        }
-                                        probe_fail_count = 3;
-                                        break;
-                                    } else {
+                                    },
+                                    _ => {
                                         probe_fail_count += 1;
-                                        crate::logger::log_warning(format!("Probe returned non-OK status: {}", response.status()));
+                                        crate::logger::log_warning("Probe failed or timed out.".to_string());
                                     }
-                                },
-                                _ => {
-                                    probe_fail_count += 1;
-                                    crate::logger::log_warning("Probe failed or timed out.".to_string());
+                                }
+                                if probe_fail_count > 2 {
+                                    {
+                                        let mut statuses = FORWARD_STATUSES.lock().unwrap();
+                                        let key = format!("{}/{}", resource_type, resource_name);
+                                        statuses.entry(key).and_modify(|entry| {
+                                            entry.state = "UNAVAILABLE".to_string();
+                                        });
+                                    }
+                                    crate::logger::log_error("Probe failed more than 2 times. Restarting port-forward.".to_string());
+                                    break;
                                 }
                             }
-                            if probe_fail_count > 2 {
+                            false
+                        }).await {
+                            Ok(success) => success,
+                            Err(_) => {
                                 {
                                     let mut statuses = FORWARD_STATUSES.lock().unwrap();
                                     let key = format!("{}/{}", resource_type, resource_name);
@@ -175,10 +189,10 @@ pub async fn start_single(
                                         entry.state = "UNAVAILABLE".to_string();
                                     });
                                 }
-                                crate::logger::log_error("Probe failed more than 2 times. Restarting port-forward.".to_string());
-                                break;
+                                crate::logger::log_error("Probe overall timeout reached. Restarting port-forward.".to_string());
+                                false
                             }
-                        }
+                        };
                         if !probe_success {
                             let _ = pf.await;
                             continue;
