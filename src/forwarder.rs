@@ -122,6 +122,8 @@ pub async fn start_single(
                         use hyper::{Body, Client, Request, StatusCode};
                         let client = Client::new();
                         let timeout_duration = std::time::Duration::from_secs(timeout.unwrap_or(3));
+                        let mut probe_fail_count = 0;
+                        let mut probe_success = false;
                         loop {
                             sleep(Duration::from_secs(5)).await;
                             let url = format!("http://127.0.0.1:{}{}", internal_port, probe_path);
@@ -142,15 +144,33 @@ pub async fn start_single(
                                                 entry.state = "ACTIVE".to_string();
                                             });
                                         }
+                                        probe_success = true;
                                         break;
                                     } else {
+                                        probe_fail_count += 1;
                                         crate::logger::log_warning(format!("Probe returned non-OK status: {}", response.status()));
                                     }
                                 },
                                 _ => {
+                                    probe_fail_count += 1;
                                     crate::logger::log_warning("Probe failed or timed out.".to_string());
                                 }
                             }
+                            if probe_fail_count > 2 {
+                                {
+                                    let mut statuses = FORWARD_STATUSES.lock().unwrap();
+                                    let key = format!("{}/{}", resource_type, resource_name);
+                                    statuses.entry(key).and_modify(|entry| {
+                                        entry.state = "UNAVAILABLE".to_string();
+                                    });
+                                }
+                                crate::logger::log_error("Probe failed more than 2 times. Restarting port-forward.".to_string());
+                                break;
+                            }
+                        }
+                        if !probe_success {
+                            let _ = pf.await;
+                            continue;
                         }
                     }
                     crate::logger::log_success(format!(
