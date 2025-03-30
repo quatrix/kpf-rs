@@ -179,11 +179,25 @@ pub async fn start_single(
                                         } else {
                                             probe_fail_count += 1;
                                             crate::logger::log_warning(format!("Probe returned non-OK status: {}", response.status()));
+                                            {
+                                                let mut statuses = FORWARD_STATUSES.lock().unwrap();
+                                                let key = format!("{}/{}", resource_type, resource_name);
+                                                statuses.entry(key).and_modify(|entry| {
+                                                    entry.state = ForwardState::Unavailable;
+                                                });
+                                            }
                                         }
                                     },
                                     _ => {
                                         probe_fail_count += 1;
                                         crate::logger::log_warning("Probe failed or timed out.".to_string());
+                                        {
+                                            let mut statuses = FORWARD_STATUSES.lock().unwrap();
+                                            let key = format!("{}/{}", resource_type, resource_name);
+                                            statuses.entry(key).and_modify(|entry| {
+                                                entry.state = ForwardState::Unavailable;
+                                            });
+                                        }
                                     }
                                 }
                                 if probe_fail_count > 2 {
