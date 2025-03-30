@@ -1,8 +1,6 @@
 use anyhow::Result;
 use crossterm::{
-    event::{
-        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers,
-    },
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -389,11 +387,12 @@ fn render_status_panel(f: &mut Frame, app: &mut App, area: Rect) {
             let status_string = st.state.to_string();
             let status = match status_string.as_str() {
                 "INITIALIZING" => "🔄 INITIALIZING",
-                "OPEN" => "🔓 OPEN",
+                "OPEN" => "☕ OPEN",
                 "ACTIVE" => "🚀 ACTIVE",
                 "UNAVAILABLE" => "🚫 UNAVAILABLE",
                 _ => status_string.as_str(),
-            }.to_string();
+            }
+            .to_string();
             Row::new(vec![
                 Cell::from(st.resource.clone()),
                 Cell::from(st.local_port.to_string()),
@@ -448,7 +447,6 @@ fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect, _viewport_height:
         let base_style = Style::default().fg(color);
 
         let is_current_match = current_match_log_index == Some(log_index);
-
 
         // Function to create spans for a single line, highlighting search terms
 
