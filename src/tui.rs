@@ -447,8 +447,6 @@ fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect, _viewport_height:
         };
         let base_style = Style::default().fg(color);
 
-        // Determine if this line is a search result
-        let is_search_result = app.search_results.contains(&log_index);
         let is_current_match = current_match_log_index == Some(log_index);
 
 
@@ -607,10 +605,7 @@ fn render_command_panel(f: &mut Frame, app: &mut App, area: Rect) {
 
     // Render cursor in search mode
     if app.search_mode {
-        f.set_cursor_position(
-            area.x + 1 + app.search_query.chars().count() as u16, // +1 for the '/'
-            area.y,
-        )
+        f.set_cursor_position((area.x + 1 + app.search_query.chars().count() as u16, area.y))
     }
     f.render_widget(paragraph, area);
 }
