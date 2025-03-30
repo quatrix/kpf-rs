@@ -1,12 +1,12 @@
-use std::sync::{mpsc, Mutex, Once};
+use std::sync::{mpsc, Mutex};
 use tracing_subscriber::{fmt, EnvFilter};
 
-// Global log sender
-static mut LOG_SENDER: Option<mpsc::Sender<crate::tui::LogEntry>> = None;
-// Mutex to synchronize log output
-static mut LOG_MUTEX: Option<Mutex<()>> = None;
-// Ensure initialization happens only once
-static INIT: Once = Once::new();
+#[macro_use]
+extern crate lazy_static;
+
+lazy_static! {
+    static ref LOG_SENDER: Mutex<Option<mpsc::Sender<crate::tui::LogEntry>>> = Mutex::new(None);
+}
 
 pub fn init(_verbose: u8) {
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("error"));
