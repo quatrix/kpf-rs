@@ -8,23 +8,13 @@ static mut LOG_MUTEX: Option<Mutex<()>> = None;
 // Ensure initialization happens only once
 static INIT: Once = Once::new();
 
-pub fn init(verbose: u8) {
+pub fn init(_verbose: u8) {
     // Initialize the mutex only once
-    INIT.call_once(|| {
-        unsafe {
-            LOG_MUTEX = Some(Mutex::new(()));
-        }
+    INIT.call_once(|| unsafe {
+        LOG_MUTEX = Some(Mutex::new(()));
     });
 
-    // Use a fixed log level for the application
-    let filter = match verbose {
-        0 => "warn",
-        1 => "info",
-        2 => "debug",
-        _ => "trace",
-    };
-
-    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(filter));
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("error"));
 
     // Configure tracing to use a no-op subscriber when in TUI mode
     // This prevents tracing logs from interfering with our custom logging
@@ -36,8 +26,6 @@ pub fn init(verbose: u8) {
             .with_target(false)
             .init();
     }
-
-    log_info(format!("📝 Log level set to {}", filter));
 }
 
 pub fn set_log_sender(sender: mpsc::Sender<crate::tui::LogEntry>) {
@@ -64,7 +52,7 @@ pub fn log_info(message: String) {
                 message: message.clone(),
                 level: crate::tui::LogLevel::Info,
             }) {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(e) => eprintln!("Failed to send log to TUI: {}", e),
             }
         } else {
@@ -91,7 +79,7 @@ pub fn log_success(message: String) {
                 message: message.clone(),
                 level: crate::tui::LogLevel::Success,
             }) {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(e) => eprintln!("Failed to send log to TUI: {}", e),
             }
         } else {
@@ -118,7 +106,7 @@ pub fn log_warning(message: String) {
                 message: message.clone(),
                 level: crate::tui::LogLevel::Warning,
             }) {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(e) => eprintln!("Failed to send log to TUI: {}", e),
             }
         } else {
@@ -145,7 +133,7 @@ pub fn log_error(message: String) {
                 message: message.clone(),
                 level: crate::tui::LogLevel::Error,
             }) {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(e) => eprintln!("Failed to send log to TUI: {}", e),
             }
         } else {
