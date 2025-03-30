@@ -405,10 +405,10 @@ fn render_status_panel(f: &mut Frame, app: &mut App, area: Rect) {
     let table = Table::new(
         rows,
         &[
-            Constraint::Percentage(40),
-            Constraint::Length(10),
-            Constraint::Length(12),
-            Constraint::Percentage(38),
+            Constraint::Percentage(25),
+            Constraint::Percentage(25),
+            Constraint::Percentage(25),
+            Constraint::Percentage(25),
         ],
     )
     .header(header)
