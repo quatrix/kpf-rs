@@ -25,7 +25,7 @@ use textwrap;
 pub struct ForwardStatus {
     pub resource: String,
     pub local_port: u16,
-    pub state: String,
+    pub state: crate::forwarder::ForwardState,
     pub last_probe: Option<String>,
 }
 
@@ -390,7 +390,7 @@ fn render_status_panel(f: &mut Frame, app: &mut App, area: Rect) {
             Row::new(vec![
                 Cell::from(st.resource.clone()),
                 Cell::from(st.local_port.to_string()),
-                Cell::from(st.state.clone()),
+                Cell::from(st.state.to_string()),
                 Cell::from(st.last_probe.clone().unwrap_or_else(|| "N/A".to_string())),
             ])
         })

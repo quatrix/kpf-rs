@@ -11,6 +11,26 @@ use tokio::time::sleep;
 const MAX_RETRY_ATTEMPTS: u32 = 5;
 const RETRY_DELAY_MS: u64 = 1000;
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ForwardState {
+    Initializing,
+    Open,
+    Active,
+    Unavailable,
+}
+
+impl std::fmt::Display for ForwardState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            ForwardState::Initializing => "INITIALIZING",
+            ForwardState::Open => "OPEN",
+            ForwardState::Active => "ACTIVE",
+            ForwardState::Unavailable => "UNAVAILABLE",
+        };
+        write!(f, "{}", s)
+    }
+}
+
 use std::net::TcpListener;
 
 use std::collections::HashMap;
@@ -103,7 +123,7 @@ pub async fn start_single(
                             statuses.insert(format!("{}/{}", resource_type, resource_name), ForwardStatus {
                                 resource: format!("{}/{}", resource_type, resource_name),
                                 local_port,
-                                state: "OPEN".to_string(),
+                                state: ForwardState::Open,
                                 last_probe: None,
                             });
                         }
@@ -142,7 +162,7 @@ pub async fn start_single(
                                                 let key = format!("{}/{}", resource_type, resource_name);
                                                 statuses.entry(key).and_modify(|entry| {
                                                     entry.last_probe = Some(chrono::Utc::now().to_rfc3339());
-                                                    entry.state = "ACTIVE".to_string();
+                                                    entry.state = ForwardState::Active;
                                                 });
                                             }
                                             return true;
@@ -152,7 +172,7 @@ pub async fn start_single(
                                                 let mut statuses = FORWARD_STATUSES.lock().unwrap();
                                                 let key = format!("{}/{}", resource_type, resource_name);
                                                 statuses.entry(key).and_modify(|entry| {
-                                                    entry.state = "UNAVAILABLE".to_string();
+                                                    entry.state = ForwardState::Unavailable;
                                                 });
                                             }
                                             return false;
@@ -171,7 +191,7 @@ pub async fn start_single(
                                         let mut statuses = FORWARD_STATUSES.lock().unwrap();
                                         let key = format!("{}/{}", resource_type, resource_name);
                                         statuses.entry(key).and_modify(|entry| {
-                                            entry.state = "UNAVAILABLE".to_string();
+                                            entry.state = ForwardState::Unavailable;
                                         });
                                     }
                                     crate::logger::log_error("Probe failed more than 2 times. Restarting port-forward.".to_string());
@@ -186,7 +206,7 @@ pub async fn start_single(
                                     let mut statuses = FORWARD_STATUSES.lock().unwrap();
                                     let key = format!("{}/{}", resource_type, resource_name);
                                     statuses.entry(key).and_modify(|entry| {
-                                        entry.state = "UNAVAILABLE".to_string();
+                                        entry.state = ForwardState::Unavailable;
                                     });
                                 }
                                 crate::logger::log_error("Probe overall timeout reached. Restarting port-forward.".to_string());
@@ -215,7 +235,7 @@ pub async fn start_single(
                         {
                             let mut statuses = FORWARD_STATUSES.lock().unwrap();
                             let key = format!("{}/{}", resource_type, resource_name);
-                            statuses.entry(key).and_modify(|entry| entry.state = "INACTIVE".to_string());
+                            statuses.entry(key).and_modify(|entry| entry.state = ForwardState::Unavailable);
                         }
                     }
 
@@ -282,7 +302,7 @@ pub async fn start_from_config(
                 ForwardStatus {
                     resource: format!("{}/{}", resource_type, resource_name),
                     local_port,
-                    state: "INITIALIZING".to_string(),
+                    state: ForwardState::Initializing,
                     last_probe: None,
                 },
             );
