@@ -1,7 +1,7 @@
 use anyhow::Result;
 use crossterm::{
     event::{
-        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers,
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers,
     },
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -18,7 +18,6 @@ use std::io;
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
-use textwrap;
 
 // New struct: ForwardStatus holds the state for a port-forward
 #[derive(Clone)]
@@ -387,13 +386,14 @@ fn render_status_panel(f: &mut Frame, app: &mut App, area: Rect) {
         .forward_statuses
         .iter()
         .map(|st| {
-            let status = match st.state.to_string().as_str() {
+            let status_string = st.state.to_string();
+            let status = match status_string.as_str() {
                 "INITIALIZING" => "🔄 INITIALIZING",
                 "OPEN" => "🔓 OPEN",
                 "ACTIVE" => "🚀 ACTIVE",
                 "UNAVAILABLE" => "🚫 UNAVAILABLE",
-                other => other,
-            };
+                _ => status_string.as_str(),
+            }.to_string();
             Row::new(vec![
                 Cell::from(st.resource.clone()),
                 Cell::from(st.local_port.to_string()),
@@ -424,11 +424,6 @@ fn render_status_panel(f: &mut Frame, app: &mut App, area: Rect) {
 fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect, _viewport_height: u16) {
     f.render_widget(Clear, area);
     // Build log lines with timestamp prefixes and colored messages
-    let inner_width = if area.width > 2 {
-        area.width - 2
-    } else {
-        area.width
-    } as usize;
 
     let mut log_lines: Vec<Line> = Vec::new();
     let search_highlight_style = Style::default().bg(Color::Yellow).fg(Color::Black);
@@ -456,13 +451,6 @@ fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect, _viewport_height:
         let is_search_result = app.search_results.contains(&log_index);
         let is_current_match = current_match_log_index == Some(log_index);
 
-        let line_style = if is_current_match {
-            current_match_highlight_style
-        } else if is_search_result {
-            search_highlight_style
-        } else {
-            base_style // Base style determined by log level
-        };
 
         // Function to create spans for a single line, highlighting search terms
 
@@ -619,7 +607,7 @@ fn render_command_panel(f: &mut Frame, app: &mut App, area: Rect) {
 
     // Render cursor in search mode
     if app.search_mode {
-        f.set_cursor(
+        f.set_cursor_position(
             area.x + 1 + app.search_query.chars().count() as u16, // +1 for the '/'
             area.y,
         )
